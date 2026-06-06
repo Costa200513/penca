@@ -317,7 +317,7 @@ function renderShell() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Pronósticos cerrados 30 minutos antes del inicio. No se puede pronosticar si hay equipos sin asignar.</p>
+  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Pronósticos cerrados 30 minutos antes del inicio. </p>
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
@@ -443,7 +443,7 @@ function renderRanking() {
   const usersRank = rankingData();
   const specialtyRank = specialtyRankingData();
   $("ranking").innerHTML =
-    `<h1>Ranking</h1><div class="underline"></div><p class="subtitle">El admin no participa del ranking.</p><div class="ranking-container">${renderRankingBlock("Ranking por usuario", "Puntaje individual de cada participante.", usersRank, "user")}${renderRankingBlock("Ranking por especialidad", "Suma de puntos por especialidad.", specialtyRank, "specialty")}</div>`;
+    `<h1>Ranking</h1><div class="underline"></div><div class="ranking-container">${renderRankingBlock("Ranking por usuario", "Puntaje individual de cada participante.", usersRank, "user")}${renderRankingBlock("Ranking por especialidad", "Suma de puntos por especialidad.", specialtyRank, "specialty")}</div>`;
 }
 function detailPills(r) {
   return `<div class="detail-pill"><strong>${r.exact}</strong><span>Exactos</span></div><div class="detail-pill"><strong>${r.partial}</strong><span>Parciales</span></div><div class="detail-pill"><strong>${r.draw}</strong><span>Empates</span></div><div class="detail-pill"><strong>${r.penalties}</strong><span>Penales</span></div><div class="detail-pill"><strong>${r.incorrect}</strong><span>Incorrectos</span></div>`;
@@ -451,7 +451,7 @@ function detailPills(r) {
 
 function renderRules() {
   $("reglas").innerHTML =
-    `<h1>Reglas</h1><div class="underline"></div><p class="subtitle">Sistema de puntos con ejemplos.</p><div class="rules-grid"><div class="rule-card"><div class="rule-points">+3</div><h3>Resultado exacto</h3><p>Pronóstico: Uruguay 2 - 1 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+2</div><h3>Ganador acertado</h3><p>Pronóstico: Uruguay 1 - 0 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Empate acertado</h3><p>Pronóstico: Uruguay 1 - 1 España<br>Resultado: Uruguay 2 - 2 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Bonus penales</h3><p>En eliminatorias, si pronosticás empate y acertás el ganador por penales.</p></div><div class="rule-card"><div class="rule-points">0</div><h3>Incorrecto</h3><p>Pronóstico: Uruguay 2 - 0 España<br>Resultado: Uruguay 0 - 1 España</p></div><div class="rule-card"><div class="rule-points">+10</div><h3>Campeón</h3><p>Si tu campeón elegido gana el torneo.</p></div></div>`;
+    `<h1>Reglas</h1><div class="underline"></div><div class="rules-grid"><div class="rule-card"><div class="rule-points">+3</div><h3>Resultado exacto</h3><p>Pronóstico: Uruguay 2 - 1 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+2</div><h3>Ganador acertado</h3><p>Pronóstico: Uruguay 1 - 0 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Empate acertado</h3><p>Pronóstico: Uruguay 1 - 1 España<br>Resultado: Uruguay 2 - 2 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Bonus penales</h3><p>En eliminatorias, si pronosticás empate y acertás el ganador por penales.</p></div><div class="rule-card"><div class="rule-points">0</div><h3>Incorrecto</h3><p>Pronóstico: Uruguay 2 - 0 España<br>Resultado: Uruguay 0 - 1 España</p></div><div class="rule-card"><div class="rule-points">+10</div><h3>Campeón</h3><p>Si tu campeón elegido gana el torneo.</p></div></div>`;
 }
 
 function renderProfile() {
@@ -476,7 +476,7 @@ function renderProfile() {
       </form>`;
 
   $("perfil").innerHTML =
-    `<h1>Perfil</h1><div class="underline"></div><p class="subtitle">Datos personales, seguridad e historial.</p><div class="profile-dashboard"><div class="dashboard-card"><div class="profile-identity-main"><div class="no-photo-badge profile-avatar">${userInitials(userData)}</div><div class="profile-identity-info"><span class="profile-label">Participante</span><h2>${esc(userData.fullName)}</h2><p class="profile-username">@${esc(userData.username)}</p><div class="profile-meta-grid"><div><span>Correo</span><strong>${esc(userData.email)}</strong></div><div><span>Perfil</span><strong>${userData.participantType === "teacher" ? "Docente" : "Estudiante"}</strong></div><div><span>Especialidad</span><strong>${esc(userData.specialty)}</strong></div><div><span>Año</span><strong>${esc(userData.year || "-")}.º</strong></div></div></div></div></div><div class="dashboard-card profile-champion-card"><span class="profile-label">Mi campeón elegido</span><h3>Predicción a largo plazo</h3><p class="champion-help">Elegí una selección desde tu perfil. La elección queda bloqueada y puede sumar <strong>+10 puntos</strong>.</p>${championBlock}<p id="championMsg" class="inline-message"></p></div><div class="dashboard-card history-card"><span class="profile-label">Historial de pronósticos</span><h3>Consultar partido</h3>${
+    `<h1>Perfil</h1><div class="underline"></div><div class="profile-dashboard"><div class="dashboard-card"><div class="profile-identity-main"><div class="no-photo-badge profile-avatar">${userInitials(userData)}</div><div class="profile-identity-info"><span class="profile-label">Participante</span><h2>${esc(userData.fullName)}</h2><p class="profile-username">@${esc(userData.username)}</p><div class="profile-meta-grid"><div><span>Correo</span><strong>${esc(userData.email)}</strong></div><div><span>Perfil</span><strong>${userData.participantType === "teacher" ? "Docente" : "Estudiante"}</strong></div><div><span>Especialidad</span><strong>${esc(userData.specialty)}</strong></div><div><span>Año</span><strong>${esc(userData.year || "-")}.º</strong></div></div></div></div></div><div class="dashboard-card profile-champion-card"><span class="profile-label">Mi campeón elegido</span><h3>Predicción a largo plazo</h3><p class="champion-help">Elegí una selección desde tu perfil. La elección queda bloqueada y puede sumar <strong>+10 puntos</strong>.</p>${championBlock}<p id="championMsg" class="inline-message"></p></div><div class="dashboard-card history-card"><span class="profile-label">Historial de pronósticos</span><h3>Consultar partido</h3>${
       myPreds.length
         ? `<select id="historySelect" class="history-select" onchange="showHistoryDetail(this.value)"><option value="">Seleccionar partido</option>${myPreds
             .map((p, i) => {
@@ -589,7 +589,6 @@ function renderRightPanel() {
   const myStats = currentUserRankingStats();
 
   $("rightPanel").innerHTML = `
-    <div class="resume-header">Usuario logueado</div>
     <div class="resume-content right-panel-user-card">
       <div class="user-large right-user-summary">
         <div class="no-photo-badge right-panel-avatar">${userInitials(userData)}</div>
