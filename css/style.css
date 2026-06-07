@@ -2206,3 +2206,20 @@ input[type="number"]::-webkit-inner-spin-button {
   border-top: none;
   padding-top: 0;
 }
+
+/* =========================
+   RANKING - USUARIO LOGUEADO
+   Resalta solo el ranking individual.
+========================= */
+.ranking-item.current {
+  background: rgba(22, 199, 132, 0.15);
+  border-left: 4px solid #16c784;
+}
+
+.podium-card.current {
+  border-color: #16c784 !important;
+  box-shadow:
+    0 0 0 2px rgba(22, 199, 132, 0.65),
+    0 0 24px rgba(22, 199, 132, 0.32),
+    0 12px 30px rgba(0, 0, 0, 0.28);
+}
