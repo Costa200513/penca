@@ -335,7 +335,7 @@ function renderShell() {
       <button onclick="showSection('perfil', this)">👤 Perfil</button>
       ${isAdmin() ? `<button onclick="showSection('admin', this)">Admin resultados</button><button onclick="showSection('usuarios', this)">Gestión usuarios</button>` : ""}
     </nav>
-    <div class="credits">Desarrollado por Ezequiel Costa<br>3.º año de Profesorado de Informática<br>Ingenieria de Software</div>
+    <div class="credits">Desarrollado por Ezequiel Costa<br>3.º año de Profesorado de Informática<br>Ingeniería de Software</div>
   </aside>
   <main class="main">
     <section id="fixture" class="section active"></section><section id="ranking" class="section"></section><section id="reglas" class="section"></section><section id="perfil" class="section"></section>${isAdmin() ? `<section id="admin" class="section"></section><section id="usuarios" class="section"></section>` : ""}
