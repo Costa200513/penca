@@ -4,6 +4,8 @@ import {
   onAuthStateChanged,
   signOut,
   updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   collection,
@@ -537,7 +539,7 @@ function renderProfile() {
             })
             .join("")}`
         : '<p class="subtitle">Todavía no hiciste pronósticos.</p>'
-    }</div><div class="dashboard-card"><span class="profile-label">Seguridad</span><h3>Cambiar contraseña</h3><form id="passwordForm" class="security-form"><div class="form-grid"><div class="form-group"><label>Nueva contraseña</label><input id="newPass" type="password" required minlength="6"></div><div class="form-group"><label>Repetir contraseña</label><input id="repeatPass" type="password" required minlength="6"></div></div><button class="save-btn">Cambiar contraseña</button></form><p id="passwordMsg" class="inline-message"></p><div class="profile-logout-box"><div><strong>Cerrar sesión</strong><p>Salir de tu cuenta actual.</p></div><button class="profile-logout-link" onclick="logout()">Cerrar sesión</button></div></div></div>`;
+    }</div><div class="dashboard-card"><span class="profile-label">Seguridad</span><h3>Cambiar contraseña</h3><form id="passwordForm" class="security-form"><div class="form-grid"><div class="form-group"><label>Contraseña actual</label><input id="currentPass" type="password" required minlength="6" autocomplete="current-password"></div><div class="form-group"><label>Nueva contraseña</label><input id="newPass" type="password" required minlength="6" autocomplete="new-password"></div><div class="form-group"><label>Repetir contraseña</label><input id="repeatPass" type="password" required minlength="6" autocomplete="new-password"></div></div><button class="save-btn">Cambiar contraseña</button></form><p id="passwordMsg" class="inline-message"></p><div class="profile-logout-box"><div><strong>Cerrar sesión</strong><p>Salir de tu cuenta actual.</p></div><button class="profile-logout-link" onclick="logout()">Cerrar sesión</button></div></div></div>`;
   $("passwordForm")?.addEventListener("submit", changePassword);
   $("profileChampionForm")?.addEventListener("submit", saveChampionProfile);
 }
@@ -599,26 +601,71 @@ async function saveChampionProfile(e) {
 async function changePassword(e) {
   e.preventDefault();
   const msg = $("passwordMsg");
-  const a = $("newPass").value,
-    b = $("repeatPass").value;
+  const current = $("currentPass")?.value || "";
+  const a = $("newPass")?.value || "";
+  const b = $("repeatPass")?.value || "";
+
+  msg.textContent = "";
+  msg.className = "inline-message";
+
+  if (!current) {
+    msg.textContent = "Ingresá tu contraseña actual.";
+    msg.className = "inline-message error";
+    return;
+  }
+
   if (a !== b) {
     msg.textContent = "Las contraseñas no coinciden.";
     msg.className = "inline-message error";
     return;
   }
+
   if (a.length < 6) {
     msg.textContent = "La contraseña debe tener al menos 6 caracteres.";
     msg.className = "inline-message error";
     return;
   }
+
+  if (current === a) {
+    msg.textContent = "La nueva contraseña debe ser diferente a la actual.";
+    msg.className = "inline-message error";
+    return;
+  }
+
   try {
+    /*
+      Firebase exige una autenticación reciente para cambiar la contraseña.
+      Por eso primero reautenticamos al usuario con su contraseña actual
+      y recién después actualizamos la contraseña.
+    */
+    const credential = EmailAuthProvider.credential(currentUser.email, current);
+    await reauthenticateWithCredential(currentUser, credential);
     await updatePassword(currentUser, a);
-    msg.textContent = "Contraseña actualizada.";
+
+    msg.textContent = "Contraseña actualizada correctamente.";
     msg.className = "inline-message success";
     e.target.reset();
   } catch (err) {
-    msg.textContent =
-      "No se pudo cambiar. Volvé a iniciar sesión e intentá otra vez.";
+    console.error(err);
+
+    if (
+      err.code === "auth/wrong-password" ||
+      err.code === "auth/invalid-credential"
+    ) {
+      msg.textContent = "La contraseña actual no es correcta.";
+    } else if (err.code === "auth/weak-password") {
+      msg.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
+    } else if (err.code === "auth/too-many-requests") {
+      msg.textContent =
+        "Demasiados intentos. Esperá unos minutos y probá de nuevo.";
+    } else if (err.code === "auth/requires-recent-login") {
+      msg.textContent =
+        "Por seguridad, cerrá sesión, volvé a ingresar e intentá nuevamente.";
+    } else {
+      msg.textContent =
+        "No se pudo cambiar la contraseña. Verificá los datos e intentá nuevamente.";
+    }
+
     msg.className = "inline-message error";
   }
 }
