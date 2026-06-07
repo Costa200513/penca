@@ -2152,3 +2152,33 @@ input[type="number"]::-webkit-inner-spin-button {
     height: 116px;
   }
 }
+
+/* =========================
+   AJUSTE ADMIN HORARIOS
+   - fecha y hora independientes del resultado
+========================= */
+.schedule-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.schedule-form-actions button {
+  width: 100%;
+}
+
+@media (max-width: 850px) {
+  .schedule-form-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   ATAJO DEL PANEL DERECHO AL ADMIN
+========================= */
+.admin-match-card.match-focus {
+  outline: 2px solid #16c784;
+  box-shadow:
+    0 0 0 4px rgba(22, 199, 132, 0.18),
+    0 8px 20px rgba(0, 0, 0, 0.25);
+}

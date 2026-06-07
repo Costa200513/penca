@@ -117,6 +117,32 @@ function weekdayDateLabel(dateISO) {
   return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 }
 
+function cleanVenueName(venue = "") {
+  return String(venue || "").trim();
+}
+
+function matchDateLine(m = {}) {
+  const venue = cleanVenueName(m.venue);
+  let text = String(m.dateText || "Horario a confirmar").trim();
+
+  if (venue && text.includes(venue)) {
+    text = text
+      .replace(new RegExp(`\\s*·\\s*${escapeRegExp(venue)}\\s*$`), "")
+      .replace(new RegExp(`\\s*-\\s*${escapeRegExp(venue)}\\s*$`), "")
+      .trim();
+  }
+
+  return text || "Horario a confirmar";
+}
+
+function matchVenueLine(m = {}) {
+  return cleanVenueName(m.venue);
+}
+
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function hidePageLoader() {
   const loader = document.getElementById("pageLoader");
   if (loader) loader.classList.add("hidden");
@@ -339,7 +365,7 @@ function renderMatchCard(m) {
     m.status === "played"
       ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>Resultado</span>`
       : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span>Tu pronóstico</span>`;
-  return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(m.dateText || "Horario a confirmar")}<br>${esc(m.venue || "")}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
+  return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
 }
 function phaseName(id) {
   return phases.find((f) => f.id === id)?.name || id;
@@ -605,7 +631,7 @@ function renderRightPanel() {
     </div>
     <div class="next-match">
       <h4>Próximo partido</h4>
-      ${next ? `<strong>${esc(teamName(next.teamAId))} vs ${esc(teamName(next.teamBId))}</strong><p>${esc(next.dateText || "Horario a confirmar")}</p><button class="action-btn next-match-btn" onclick="goToNextMatch('fase-${next.phase}', 'match-${next.id}')">Pronosticar</button>` : "<p>No hay partidos abiertos.</p>"}
+      ${next ? `<strong>${esc(teamName(next.teamAId))} vs ${esc(teamName(next.teamBId))}</strong><p>${esc(next.dateText || "Horario a confirmar")}</p>${isAdmin() ? `<button class="action-btn next-match-btn" onclick="goToAdminNextMatch('admin-${next.phase}', 'admin-match-${next.id}')">Determinar</button>` : `<button class="action-btn next-match-btn" onclick="goToNextMatch('fase-${next.phase}', 'match-${next.id}')">Pronosticar</button>`}` : "<p>No hay partidos abiertos.</p>"}
     </div>
     <div class="rules-box">
       <h4>Reglas rápidas</h4>
@@ -652,11 +678,11 @@ function realTeamsOptions(selected = "") {
   );
 }
 function renderAdminMatch(m) {
-  return `<article class="admin-match-card">
+  return `<article id="admin-match-${m.id}" class="admin-match-card">
     <div class="admin-match-info">
       <span class="section-title">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span>
       <h3>${esc(teamName(m.teamAId))} vs ${esc(teamName(m.teamBId))}</h3>
-      <p>${esc(m.dateText || "Horario a confirmar")} · ${esc(m.venue || "")}</p>
+      <p>${esc(matchDateLine(m))}${matchVenueLine(m) ? ` · ${esc(matchVenueLine(m))}` : ""}</p>
     </div>
     <div class="admin-forms-row admin-forms-row-three">
       <form class="admin-manual-form" data-match="${m.id}">
@@ -665,9 +691,13 @@ function renderAdminMatch(m) {
         <button class="cancel-btn">Actualizar equipos</button>
       </form>
       <form class="admin-schedule-form admin-manual-form" data-match="${m.id}">
+        <label>Día del partido<input name="matchDate" type="date" value="${parseDateOnlyFromMatch(m)}"></label>
         <label>Hora del partido (Uruguay)<input name="matchTime" type="time" value="${m.dateTime ? m.dateTime.substring(11, 16) : ""}"></label>
-        <small class="input-help">El día ya está cargado. Solo indicá o corregí la hora del partido.</small>
-        <button class="cancel-btn">Guardar hora</button>
+        <small class="input-help">Podés guardar solo la hora usando el día ya cargado, o corregir el día y la hora sin cargar resultado.</small>
+        <div class="schedule-form-actions">
+          <button class="cancel-btn" name="scheduleAction" value="time">Guardar hora</button>
+          <button class="cancel-btn" name="scheduleAction" value="dateTime">Guardar día y hora</button>
+        </div>
       </form>
       <form class="admin-score-form" data-match="${m.id}">
         <label>${esc(teamName(m.teamAId))}<input name="goalsA" type="number" min="0" max="50" step="1" inputmode="numeric" pattern="[0-9]*" value="${m.goalsA ?? ""}" required></label>
@@ -735,18 +765,38 @@ async function saveSchedule(e) {
   const m = matches.find((x) => x.id === id);
   const fd = new FormData(e.target);
   const matchTime = String(fd.get("matchTime") || "").trim();
-  if (!/^\d{2}:\d{2}$/.test(matchTime))
+  const matchDateInput = String(fd.get("matchDate") || "").trim();
+  const action = e.submitter?.value || "time";
+
+  if (!/^\d{2}:\d{2}$/.test(matchTime)) {
     return alert("Seleccioná una hora válida.");
-  const dateOnly = parseDateOnlyFromMatch(m);
-  if (!dateOnly)
-    return alert("Este partido no tiene día cargado. Revisá la base inicial.");
+  }
+
+  let dateOnly = parseDateOnlyFromMatch(m);
+
+  if (action === "dateTime") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(matchDateInput)) {
+      return alert("Seleccioná un día válido.");
+    }
+    dateOnly = matchDateInput;
+  }
+
+  if (!dateOnly) {
+    return alert(
+      "Este partido no tiene día cargado. Usá 'Guardar día y hora' para corregirlo.",
+    );
+  }
+
   const dateTime = `${dateOnly}T${matchTime}:00-03:00`;
   const dateText = `${weekdayDateLabel(dateOnly)} · ${matchTime} UY${m?.venue ? " · " + m.venue : ""}`;
+
   await updateDoc(doc(db, "matches", id), {
+    dateOnly,
     dateTime,
     dateText,
     updatedAt: serverTimestamp(),
   });
+
   await loadData();
   renderAll();
 }
@@ -876,6 +926,25 @@ window.goToNextMatch = (phaseId, matchId) => {
     b.getAttribute("onclick")?.includes(phaseId),
   );
   if (btn) showFixturePhase(phaseId, btn);
+  setTimeout(() => {
+    const el = $(matchId);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.classList.add("match-focus");
+    setTimeout(() => el?.classList.remove("match-focus"), 2500);
+  }, 100);
+};
+
+window.goToAdminNextMatch = (phaseId, matchId) => {
+  const adminButton = [...document.querySelectorAll(".menu button")].find((b) =>
+    b.getAttribute("onclick")?.includes("admin"),
+  );
+  showSection("admin", adminButton);
+
+  const phaseButton = [...document.querySelectorAll("#admin .phase-btn")].find(
+    (b) => b.getAttribute("onclick")?.includes(phaseId),
+  );
+  if (phaseButton) showFixturePhase(phaseId, phaseButton);
+
   setTimeout(() => {
     const el = $(matchId);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
