@@ -468,8 +468,25 @@ function currentUserRankingStats() {
 function renderRanking() {
   const usersRank = rankingData();
   const specialtyRank = specialtyRankingData();
-  $("ranking").innerHTML =
-    `<h1>Ranking</h1><div class="underline"></div><div class="ranking-container">${renderRankingBlock("Ranking por usuario", "Puntaje individual de cada participante.", usersRank, "user")}${renderRankingBlock("Ranking por especialidad", "Suma de puntos por especialidad.", specialtyRank, "specialty")}</div>`;
+
+  $("ranking").innerHTML = `<h1>Ranking</h1>
+    <div class="underline"></div>
+    <p class="subtitle">Consultá la tabla individual o la suma total por especialidad.</p>
+
+    <div class="phase-tabs ranking-tabs">
+      <button class="phase-btn active" onclick="showRankingTab('ranking-individual', this)">Individual</button>
+      <button class="phase-btn" onclick="showRankingTab('ranking-specialty', this)">Especialidad</button>
+    </div>
+
+    <div class="ranking-container">
+      <div id="ranking-individual" class="ranking-tab-panel active">
+        ${renderRankingBlock(" ", " ", usersRank, "user")}
+      </div>
+
+      <div id="ranking-specialty" class="ranking-tab-panel">
+        ${renderRankingBlock(" ", " ", specialtyRank, "specialty")}
+      </div>
+    </div>`;
 }
 function detailPills(r) {
   return `<div class="detail-pill"><strong>${r.exact}</strong><span>Exactos</span></div><div class="detail-pill"><strong>${r.partial}</strong><span>Parciales</span></div><div class="detail-pill"><strong>${r.draw}</strong><span>Empates</span></div><div class="detail-pill"><strong>${r.penalties}</strong><span>Penales</span></div><div class="detail-pill"><strong>${r.incorrect}</strong><span>Incorrectos</span></div>`;
@@ -952,6 +969,23 @@ window.goToAdminNextMatch = (phaseId, matchId) => {
     setTimeout(() => el?.classList.remove("match-focus"), 2500);
   }, 100);
 };
+window.showRankingTab = (id, btn) => {
+  const section = $("ranking");
+  if (!section) return;
+
+  section
+    .querySelectorAll(".ranking-tab-panel")
+    .forEach((panel) => panel.classList.remove("active"));
+
+  section.querySelector("#" + id)?.classList.add("active");
+
+  section
+    .querySelectorAll(".ranking-tabs .phase-btn")
+    .forEach((button) => button.classList.remove("active"));
+
+  btn?.classList.add("active");
+};
+
 function forceDarkTheme() {
   document.body.classList.remove("light-mode");
   localStorage.setItem("theme", "dark");
