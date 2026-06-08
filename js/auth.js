@@ -28,6 +28,23 @@ function showMessage(element, text, type = "error") {
   element.classList.add(type);
 }
 
+function setButtonLoading(button, loading, text = "Cargando...") {
+  if (!button) return;
+
+  if (loading) {
+    if (!button.dataset.originalText)
+      button.dataset.originalText = button.textContent.trim();
+    button.textContent = text;
+    button.disabled = true;
+    button.classList.add("is-loading");
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    delete button.dataset.originalText;
+  }
+}
+
 function traducirErrorFirebase(code) {
   const errores = {
     "auth/email-already-in-use": "Ese correo ya está registrado.",
@@ -57,6 +74,9 @@ if (registerForm) {
     e.preventDefault();
 
     const message = document.getElementById("registerMessage");
+    const submitButton =
+      e.submitter ||
+      registerForm.querySelector("button[type='submit'], button:not([type])");
 
     const username = document
       .getElementById("username")
@@ -97,6 +117,7 @@ if (registerForm) {
     }
 
     try {
+      setButtonLoading(submitButton, true, "Registrando...");
       /*
         Primero se revisa si el nombre de usuario ya existe.
         Esta lectura depende de la colección usernames.
@@ -180,6 +201,8 @@ if (registerForm) {
     } catch (error) {
       console.error(error);
       showMessage(message, traducirErrorFirebase(error.code));
+    } finally {
+      setButtonLoading(submitButton, false);
     }
   });
 }
@@ -197,6 +220,9 @@ if (loginForm) {
     e.preventDefault();
 
     const message = document.getElementById("loginMessage");
+    const submitButton =
+      e.submitter ||
+      loginForm.querySelector("button[type='submit'], button:not([type])");
 
     const email = document
       .getElementById("loginEmail")
@@ -212,6 +238,7 @@ if (loginForm) {
     }
 
     try {
+      setButtonLoading(submitButton, true, "Ingresando...");
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -241,6 +268,8 @@ if (loginForm) {
     } catch (error) {
       console.error(error);
       showMessage(message, traducirErrorFirebase(error.code));
+    } finally {
+      setButtonLoading(submitButton, false);
     }
   });
 }
@@ -257,6 +286,9 @@ if (resetForm) {
     e.preventDefault();
 
     const message = document.getElementById("resetMessage");
+    const submitButton =
+      e.submitter ||
+      resetForm.querySelector("button[type='submit'], button:not([type])");
     const email = document
       .getElementById("resetEmail")
       ?.value.trim()
@@ -270,6 +302,7 @@ if (resetForm) {
     }
 
     try {
+      setButtonLoading(submitButton, true, "Enviando...");
       await sendPasswordResetEmail(auth, email);
 
       showMessage(
@@ -280,6 +313,8 @@ if (resetForm) {
     } catch (error) {
       console.error(error);
       showMessage(message, traducirErrorFirebase(error.code));
+    } finally {
+      setButtonLoading(submitButton, false);
     }
   });
 }

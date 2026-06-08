@@ -6,9 +6,18 @@
 .auth-action-body {
   min-height: 100vh;
   margin: 0;
-  background: radial-gradient(circle at top left, rgba(22, 199, 132, 0.14), transparent 32%),
-              radial-gradient(circle at bottom right, rgba(250, 204, 21, 0.10), transparent 34%),
-              #0b1118;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(22, 199, 132, 0.14),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(250, 204, 21, 0.1),
+      transparent 34%
+    ),
+    #0b1118;
   color: #ffffff;
 }
 
@@ -46,7 +55,7 @@
   display: inline-block;
   color: #16c784;
   border: 1px solid rgba(22, 199, 132, 0.45);
-  background: rgba(22, 199, 132, 0.10);
+  background: rgba(22, 199, 132, 0.1);
   padding: 7px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -170,7 +179,9 @@
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  transition: opacity 0.35s ease, visibility 0.35s ease;
+  transition:
+    opacity 0.35s ease,
+    visibility 0.35s ease;
 }
 
 .auth-action-loader.hidden {
@@ -223,4 +234,11 @@
   .auth-action-panel h1 {
     font-size: 25px;
   }
+}
+
+.auth-action-btn.is-loading,
+.auth-action-btn:disabled {
+  opacity: 0.75;
+  cursor: wait;
+  pointer-events: none;
 }

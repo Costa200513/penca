@@ -32,6 +32,8 @@ let settings = { predictionsCloseMinutes: 30, realChampionId: "" };
 let selectedMatch = null;
 let realtimeStarted = false;
 let renderTimer = null;
+let matchesSnapshotReady = false;
+let previousMatchesById = new Map();
 
 const $ = (id) => document.getElementById(id);
 const esc = (v = "") =>
@@ -47,6 +49,90 @@ const esc = (v = "") =>
       })[c],
   );
 
+function setButtonLoading(button, loading, text = "Cargando...") {
+  if (!button) return;
+  if (loading) {
+    if (!button.dataset.originalText)
+      button.dataset.originalText = button.textContent.trim();
+    button.textContent = text;
+    button.disabled = true;
+    button.classList.add("is-loading");
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    delete button.dataset.originalText;
+  }
+}
+
+function clampGoalField(input) {
+  if (!input) return;
+  let value = String(input.value || "").replace(/\D/g, "");
+  if (value.length > 2) value = value.slice(0, 2);
+  if (value !== "" && Number(value) > 50) value = "50";
+  input.value = value;
+}
+
+function attachGoalValidation(scope = document) {
+  scope.querySelectorAll(".goal-input").forEach((input) => {
+    input.addEventListener("input", () => clampGoalField(input));
+    input.addEventListener("blur", () => clampGoalField(input));
+  });
+}
+
+function getMatchName(m = {}) {
+  return `${teamName(m.teamAId)} vs ${teamName(m.teamBId)}`;
+}
+
+function predictionOpenDate(m = {}) {
+  const dateOnly = parseDateOnlyFromMatch(m);
+  if (!dateOnly) return null;
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  const openDate = new Date(year, month - 1, day - 2, 0, 0, 0, 0);
+  return openDate;
+}
+
+function predictionOpenLabel(m = {}) {
+  const openDate = predictionOpenDate(m);
+  if (!openDate) return "Fecha pendiente";
+  const weekday = openDate.toLocaleDateString("es-UY", { weekday: "long" });
+  return `Disponible desde ${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${String(openDate.getDate()).padStart(2, "0")}/${String(openDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function matchNotYetOpen(m = {}) {
+  const openDate = predictionOpenDate(m);
+  if (!openDate) return true;
+  return Date.now() < openDate.getTime();
+}
+
+function showResultBanner(match) {
+  if (isAdmin() || !match) return;
+  document.querySelector(".result-upload-toast")?.remove();
+  const toast = document.createElement("div");
+  toast.className = "result-upload-toast";
+  toast.innerHTML = `<button class="result-upload-toast-close" aria-label="Cerrar aviso">×</button><div><strong>Nuevo resultado cargado</strong><p>Se subió el resultado del partido: <span>${esc(getMatchName(match))}</span></p></div>`;
+  document.body.appendChild(toast);
+  toast
+    .querySelector("button")
+    ?.addEventListener("click", () => toast.remove());
+  setTimeout(() => toast.classList.add("visible"), 20);
+  setTimeout(() => toast.remove(), 12000);
+}
+
+function notifyNewUploadedResults(newMatches) {
+  if (!matchesSnapshotReady) return;
+  newMatches.forEach((match) => {
+    const previous = previousMatchesById.get(match.id);
+    const wasPlayed = previous?.status === "played";
+    const isPlayed = match.status === "played";
+    const previousScore = `${previous?.goalsA ?? ""}-${previous?.goalsB ?? ""}-${previous?.penaltyWinnerId ?? ""}`;
+    const currentScore = `${match.goalsA ?? ""}-${match.goalsB ?? ""}-${match.penaltyWinnerId ?? ""}`;
+    if (isPlayed && (!wasPlayed || previousScore !== currentScore)) {
+      showResultBanner(match);
+    }
+  });
+}
+
 function renderSoon() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => {
@@ -58,7 +144,13 @@ function startRealtimeListeners() {
   if (realtimeStarted) return;
   realtimeStarted = true;
   onSnapshot(query(collection(db, "matches"), orderBy("order")), (snap) => {
-    matches = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const nextMatches = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    notifyNewUploadedResults(nextMatches);
+    previousMatchesById = new Map(
+      nextMatches.map((match) => [match.id, match]),
+    );
+    matchesSnapshotReady = true;
+    matches = nextMatches;
     renderSoon();
   });
   onSnapshot(collection(db, "predictions"), (snap) => {
@@ -272,6 +364,7 @@ function isMatchAssigned(m) {
 function statusFor(m) {
   if (m.status === "played") return ["Resultado cargado", "loaded"];
   if (!isMatchAssigned(m)) return ["Equipos pendientes", "closed"];
+  if (matchNotYetOpen(m)) return [predictionOpenLabel(m), "closed"];
   if (matchClosed(m)) return ["Cerrado", "closed"];
   if (userPrediction(m.id)) return ["Pronosticado", "predicted"];
   return ["Pendiente", "pending"];
@@ -345,7 +438,7 @@ function renderShell() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Pronósticos cerrados 30 minutos antes del inicio. </p>
+  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se habilitan dos días antes de cada partido y cierran 30 minutos antes del inicio. </p>
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
@@ -367,7 +460,7 @@ function renderMatchCard(m) {
     m.status === "played"
       ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>Resultado</span>`
       : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span>Tu pronóstico</span>`;
-  return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
+  return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : matchNotYetOpen(m) ? "Próximamente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
 }
 function phaseName(id) {
   return phases.find((f) => f.id === id)?.name || id;
@@ -632,7 +725,12 @@ async function changePassword(e) {
     return;
   }
 
+  const submitButton =
+    e.submitter ||
+    e.target.querySelector("button[type='submit'], button:not([type])");
+
   try {
+    setButtonLoading(submitButton, true, "Cambiando...");
     /*
       Firebase exige una autenticación reciente para cambiar la contraseña.
       Por eso primero reautenticamos al usuario con su contraseña actual
@@ -667,13 +765,19 @@ async function changePassword(e) {
     }
 
     msg.className = "inline-message error";
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 }
 
 function renderRightPanel() {
   const next = matches
     .filter(
-      (m) => m.status !== "played" && isMatchAssigned(m) && !matchClosed(m),
+      (m) =>
+        m.status !== "played" &&
+        isMatchAssigned(m) &&
+        !matchNotYetOpen(m) &&
+        !matchClosed(m),
     )
     .sort(
       (a, b) => new Date(a.dateTime || "2999") - new Date(b.dateTime || "2999"),
@@ -732,6 +836,7 @@ function renderAdmin() {
     .querySelectorAll(".admin-manual-form[data-match]")
     .forEach((f) => f.addEventListener("submit", saveTeams));
   $("realChampionForm")?.addEventListener("submit", saveRealChampion);
+  attachGoalValidation($("admin"));
 }
 function realTeamsOptions(selected = "") {
   return (
@@ -767,9 +872,9 @@ function renderAdminMatch(m) {
         </div>
       </form>
       <form class="admin-score-form" data-match="${m.id}">
-        <label>${esc(teamName(m.teamAId))}<input name="goalsA" type="number" min="0" max="50" step="1" inputmode="numeric" pattern="[0-9]*" value="${m.goalsA ?? ""}" required></label>
-        <label>${esc(teamName(m.teamBId))}<input name="goalsB" type="number" min="0" max="50" step="1" inputmode="numeric" pattern="[0-9]*" value="${m.goalsB ?? ""}" required></label>
-        <label>Ganador por penales<select name="penaltyWinnerId"><option value="">No aplica</option><option value="${m.teamAId}" ${m.penaltyWinnerId === m.teamAId ? "selected" : ""}>${esc(teamName(m.teamAId))}</option><option value="${m.teamBId}" ${m.penaltyWinnerId === m.teamBId ? "selected" : ""}>${esc(teamName(m.teamBId))}</option></select></label>
+        <label>${esc(teamName(m.teamAId))}<input class="goal-input" name="goalsA" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${m.goalsA ?? ""}" required></label>
+        <label>${esc(teamName(m.teamBId))}<input class="goal-input" name="goalsB" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${m.goalsB ?? ""}" required></label>
+        <label>Ganador por penales<select name="penaltyWinnerId">${matchTeamOptionsSorted(m, m.penaltyWinnerId, true)}</select></label>
         <button class="save-btn">Guardar resultado</button>
       </form>
     </div>
@@ -784,9 +889,25 @@ function teamOptions(selected) {
     )
     .join("");
 }
+
+function matchTeamOptionsSorted(m, selected = "", includeEmpty = true) {
+  const options = [m?.teamAId, m?.teamBId]
+    .filter(Boolean)
+    .map((id) => ({ id, name: teamName(id) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
+    .map(
+      (team) =>
+        `<option value="${team.id}" ${team.id === selected ? "selected" : ""}>${esc(team.name)}</option>`,
+    )
+    .join("");
+  return `${includeEmpty ? '<option value="">No aplica</option>' : ""}${options}`;
+}
 async function saveResult(e) {
   e.preventDefault();
   if (!confirm("¿Seguro que querés guardar este resultado?")) return;
+  const submitButton =
+    e.submitter ||
+    e.target.querySelector("button[type='submit'], button:not([type])");
   const id = e.target.dataset.match;
   const m = matches.find((x) => x.id === id);
   const fd = new FormData(e.target);
@@ -799,16 +920,21 @@ async function saveResult(e) {
   if (goalsA > goalsB) winnerId = m.teamAId;
   else if (goalsB > goalsA) winnerId = m.teamBId;
   else if (penaltyWinnerId) winnerId = penaltyWinnerId;
-  await updateDoc(doc(db, "matches", id), {
-    goalsA,
-    goalsB,
-    penaltyWinnerId,
-    winnerId,
-    status: "played",
-    updatedAt: serverTimestamp(),
-  });
-  await loadData();
-  renderAll();
+  try {
+    setButtonLoading(submitButton, true, "Guardando...");
+    await updateDoc(doc(db, "matches", id), {
+      goalsA,
+      goalsB,
+      penaltyWinnerId,
+      winnerId,
+      status: "played",
+      updatedAt: serverTimestamp(),
+    });
+    await loadData();
+    renderAll();
+  } finally {
+    setButtonLoading(submitButton, false);
+  }
 }
 
 function buildDateTextFromInput(dateLocal, venue = "") {
@@ -904,10 +1030,14 @@ function renderUsersAdmin() {
 function openPrediction(id) {
   selectedMatch = matches.find((m) => m.id === id);
   if (!selectedMatch) return;
+  if (matchNotYetOpen(selectedMatch))
+    return alert(predictionOpenLabel(selectedMatch));
+  if (matchClosed(selectedMatch)) return alert("Este partido ya está cerrado.");
   $("predictionModal").innerHTML =
-    `<div class="modal-content"><h2>${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}</h2><p>Ingresá tu pronóstico.</p><form id="predictionForm"><div class="score-inputs"><div class="team-input"><label>${esc(teamName(selectedMatch.teamAId))}</label><input id="predA" type="number" min="0" max="50" step="1" inputmode="numeric" pattern="[0-9]*" value="0"></div><span class="vs">VS</span><div class="team-input"><label>${esc(teamName(selectedMatch.teamBId))}</label><input id="predB" type="number" min="0" max="50" step="1" inputmode="numeric" pattern="[0-9]*" value="0"></div></div>${phases.find((f) => f.id === selectedMatch.phase)?.knockout ? `<div class="penalty-box active"><label>Ganador por penales</label><select id="predPenalty"><option value="">No aplica</option><option value="${selectedMatch.teamAId}">${esc(teamName(selectedMatch.teamAId))}</option><option value="${selectedMatch.teamBId}">${esc(teamName(selectedMatch.teamBId))}</option></select></div>` : ""}<div class="modal-actions"><button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button><button class="save-btn">Guardar</button></div></form></div>`;
+    `<div class="modal-content"><h2>${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}</h2><p>Ingresá tu pronóstico.</p><form id="predictionForm"><div class="score-inputs"><div class="team-input"><label>${esc(teamName(selectedMatch.teamAId))}</label><input id="predA" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="0"></div><span class="vs">VS</span><div class="team-input"><label>${esc(teamName(selectedMatch.teamBId))}</label><input id="predB" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="0"></div></div>${phases.find((f) => f.id === selectedMatch.phase)?.knockout ? `<div class="penalty-box active"><label>Ganador por penales</label><select id="predPenalty">${matchTeamOptionsSorted(selectedMatch, "", true)}</select></div>` : ""}<div class="modal-actions"><button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button><button class="save-btn">Guardar</button></div></form></div>`;
   $("predictionModal").classList.add("active");
   $("predictionForm").addEventListener("submit", savePrediction);
+  attachGoalValidation($("predictionModal"));
 }
 async function savePrediction(e) {
   e.preventDefault();
@@ -916,27 +1046,37 @@ async function savePrediction(e) {
     return alert(
       "No se puede pronosticar hasta que ambos equipos estén asignados.",
     );
+  if (matchNotYetOpen(selectedMatch))
+    return alert(predictionOpenLabel(selectedMatch));
   if (matchClosed(selectedMatch)) return alert("Este partido ya está cerrado.");
   const goalsA = parseGoalValue($("predA").value),
     goalsB = parseGoalValue($("predB").value),
     penaltyWinnerId = $("predPenalty")?.value || "";
   if (goalsA === null || goalsB === null)
     return alert("Los goles deben ser números enteros entre 0 y 50.");
-  await setDoc(
-    doc(db, "predictions", `${currentUser.uid}_${selectedMatch.id}`),
-    {
-      uid: currentUser.uid,
-      matchId: selectedMatch.id,
-      goalsA,
-      goalsB,
-      penaltyWinnerId,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
-  closeModal();
-  await loadData();
-  renderAll();
+  const submitButton =
+    e.submitter ||
+    e.target.querySelector("button[type='submit'], button:not([type])");
+  try {
+    setButtonLoading(submitButton, true, "Guardando...");
+    await setDoc(
+      doc(db, "predictions", `${currentUser.uid}_${selectedMatch.id}`),
+      {
+        uid: currentUser.uid,
+        matchId: selectedMatch.id,
+        goalsA,
+        goalsB,
+        penaltyWinnerId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    closeModal();
+    await loadData();
+    renderAll();
+  } finally {
+    setButtonLoading(submitButton, false);
+  }
 }
 
 window.showSection = (id, btn) => {

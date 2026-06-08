@@ -2212,3 +2212,89 @@ input[type="number"]::-webkit-inner-spin-button {
     0 0 24px rgba(22, 199, 132, 0.32),
     0 12px 30px rgba(0, 0, 0, 0.28);
 }
+
+/* =========================
+   AVISO FLOTANTE DE RESULTADOS
+========================= */
+.result-upload-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 9998;
+  max-width: 360px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px 46px 18px 18px;
+  border: 1px solid rgba(22, 199, 132, 0.45);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5e7eb;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 0 26px rgba(22, 199, 132, 0.22);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.result-upload-toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.result-upload-toast strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #16c784;
+}
+
+.result-upload-toast p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.result-upload-toast span {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.result-upload-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.result-upload-toast-close:hover {
+  border-color: rgba(22, 199, 132, 0.7);
+  color: #16c784;
+}
+
+button:disabled.is-loading,
+button.is-loading {
+  opacity: 0.75;
+  cursor: wait;
+  pointer-events: none;
+}
+
+@media (max-width: 620px) {
+  .result-upload-toast {
+    right: 14px;
+    left: 14px;
+    bottom: 14px;
+    max-width: none;
+  }
+}
