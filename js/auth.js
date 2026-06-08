@@ -3,6 +3,10 @@ import { auth, db } from "./firebase-config.js";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  EmailAuthProvider,
+  linkWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
@@ -60,6 +64,184 @@ function traducirErrorFirebase(code) {
   };
 
   return errores[code] || "Ocurrió un error. Intentá nuevamente.";
+}
+
+function normalizeEmail(email) {
+  return (email || "").trim().toLowerCase();
+}
+
+function usernameCandidateFromUser(user) {
+  const email = normalizeEmail(user.email);
+  return email
+    .split("@")[0]
+    .replace(/[^a-z0-9_.]/gi, "")
+    .toLowerCase()
+    .slice(0, 30);
+}
+
+function getGoogleProfileFormData() {
+  const username = document
+    .getElementById("googleProfileUsername")
+    ?.value.trim()
+    .toLowerCase();
+  const participantType = document.getElementById(
+    "googleProfileParticipantType",
+  )?.value;
+  const specialty = document.getElementById("googleProfileSpecialty")?.value;
+  const year = document.getElementById("googleProfileYear")?.value;
+  const password =
+    document.getElementById("googleProfilePassword")?.value || "";
+  const passwordRepeat =
+    document.getElementById("googleProfilePasswordRepeat")?.value || "";
+
+  if (!username || !/^[a-z0-9_.]{3,30}$/.test(username)) {
+    throw new Error(
+      "El nombre de usuario debe tener entre 3 y 30 caracteres. Solo puede incluir letras, números, punto y guion bajo.",
+    );
+  }
+
+  if (!participantType || !specialty) {
+    throw new Error("Completá tipo de participante y especialidad.");
+  }
+
+  if (participantType === "student" && !year) {
+    throw new Error("Seleccioná tu año.");
+  }
+
+  if (password.length < 6) {
+    throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  }
+
+  if (password !== passwordRepeat) {
+    throw new Error("Las contraseñas no coinciden.");
+  }
+
+  return {
+    username,
+    participantType,
+    specialty,
+    year: participantType === "student" ? year : "",
+    password,
+  };
+}
+
+function openGoogleProfileModal(user) {
+  return new Promise((resolve, reject) => {
+    const modal = document.getElementById("googleProfileModal");
+    const form = document.getElementById("googleProfileForm");
+    const cancelBtn = document.getElementById("cancelGoogleProfileBtn");
+    const message = document.getElementById("googleProfileMessage");
+    const usernameInput = document.getElementById("googleProfileUsername");
+
+    if (!modal || !form) {
+      reject(new Error("No se encontró el formulario de perfil de Google."));
+      return;
+    }
+
+    if (usernameInput && !usernameInput.value) {
+      usernameInput.value = usernameCandidateFromUser(user);
+    }
+
+    showMessage(message, "", "error");
+    modal.classList.add("active");
+
+    const cleanup = () => {
+      form.removeEventListener("submit", onSubmit);
+      cancelBtn?.removeEventListener("click", onCancel);
+      modal.classList.remove("active");
+    };
+
+    const onCancel = () => {
+      cleanup();
+      reject(new Error("Inicio con Google cancelado."));
+    };
+
+    const onSubmit = (event) => {
+      event.preventDefault();
+
+      try {
+        const data = getGoogleProfileFormData();
+        cleanup();
+        resolve(data);
+      } catch (error) {
+        showMessage(message, error.message);
+      }
+    };
+
+    form.addEventListener("submit", onSubmit);
+    cancelBtn?.addEventListener("click", onCancel);
+  });
+}
+
+async function ensureGoogleUserProfile(user, profileData = null) {
+  /*
+    Google funciona como registro + inicio de sesión directo.
+    Si el usuario no existe en Firestore, antes de crearlo se exige
+    un formulario breve con username, tipo, especialidad y año.
+  */
+  await user.reload();
+  await user.getIdToken(true);
+
+  if (!user.emailVerified) {
+    throw new Error(
+      "No se pudo confirmar la verificación del correo de Google.",
+    );
+  }
+
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (userSnap.exists()) return true;
+
+  const email = normalizeEmail(user.email);
+  const data = profileData || (await openGoogleProfileModal(user));
+  const usernameRef = doc(db, "usernames", data.username);
+  const usernameSnap = await getDoc(usernameRef);
+
+  if (usernameSnap.exists()) {
+    throw new Error("Ese nombre de usuario no está disponible.");
+  }
+
+  const credential = EmailAuthProvider.credential(email, data.password);
+
+  try {
+    await linkWithCredential(user, credential);
+  } catch (error) {
+    /*
+      Si el proveedor email/password ya estaba vinculado, continuamos.
+      Para otros errores, detenemos la creación del perfil.
+    */
+    if (error.code !== "auth/provider-already-linked") {
+      throw error;
+    }
+  }
+
+  const batch = writeBatch(db);
+
+  batch.set(userRef, {
+    uid: user.uid,
+    username: data.username,
+    fullName: user.displayName || email,
+    email,
+    participantType: data.participantType,
+    specialty: data.specialty,
+    year: data.year,
+    role: "user",
+    active: true,
+    championId: "",
+    championName: "",
+    createdAt: serverTimestamp(),
+    activatedAt: serverTimestamp(),
+  });
+
+  batch.set(usernameRef, {
+    uid: user.uid,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+
+  return true;
 }
 
 async function ensureVerifiedUserProfile(user) {
@@ -257,7 +439,7 @@ if (registerForm) {
 
       showMessage(
         message,
-        "Cuenta creada. Te enviamos un correo para verificar tu cuenta, revisa la carpeta de spam.",
+        "Cuenta creada. Te enviamos un correo para verificar tu cuenta, revisa la carpeta de spam,",
         "success",
       );
 
@@ -357,6 +539,45 @@ if (loginForm) {
       );
     } finally {
       setButtonLoading(submitButton, false);
+    }
+  });
+}
+
+/* =========================
+   LOGIN DIRECTO CON GOOGLE
+   Crea el perfil automáticamente como usuario común.
+========================= */
+
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+if (googleLoginBtn) {
+  googleLoginBtn.addEventListener("click", async () => {
+    const message = document.getElementById("loginMessage");
+    const provider = new GoogleAuthProvider();
+
+    provider.setCustomParameters({
+      prompt: "select_account",
+    });
+
+    showMessage(message, "", "error");
+
+    try {
+      setButtonLoading(googleLoginBtn, true, "Ingresando...");
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      await ensureGoogleUserProfile(user);
+      window.location.href = "app.html";
+    } catch (error) {
+      console.error(error);
+      await signOut(auth).catch(() => {});
+
+      showMessage(
+        message,
+        error.code ? traducirErrorFirebase(error.code) : error.message,
+      );
+    } finally {
+      setButtonLoading(googleLoginBtn, false);
     }
   });
 }

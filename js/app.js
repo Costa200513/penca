@@ -85,29 +85,15 @@ function getMatchName(m = {}) {
 }
 
 function predictionOpenDate(m = {}) {
-  const dateOnly = parseDateOnlyFromMatch(m);
-  if (!dateOnly) return null;
-
-  const daysBefore = Number(settings.predictionOpenDaysBefore ?? 2);
-  const [year, month, day] = dateOnly.split("-").map(Number);
-
-  const openDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-  openDate.setDate(openDate.getDate() - daysBefore);
-
-  return openDate;
+  return null;
 }
 
 function predictionOpenLabel(m = {}) {
-  const openDate = predictionOpenDate(m);
-  if (!openDate) return "Fecha pendiente";
-  const weekday = openDate.toLocaleDateString("es-UY", { weekday: "long" });
-  return `Disponible desde ${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${String(openDate.getDate()).padStart(2, "0")}/${String(openDate.getMonth() + 1).padStart(2, "0")}`;
+  return "Disponible";
 }
 
 function matchNotYetOpen(m = {}) {
-  const openDate = predictionOpenDate(m);
-  if (!openDate) return true;
-  return Date.now() < openDate.getTime();
+  return false;
 }
 
 function showResultBanner(match) {

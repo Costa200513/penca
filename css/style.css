@@ -3178,3 +3178,96 @@ button.is-loading {
     overflow-x: hidden;
   }
 }
+
+/* =========================
+   LOGIN CON GOOGLE
+========================= */
+
+.auth-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.auth-separator::before,
+.auth-separator::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #334155;
+}
+.google-auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: min(100%, 280px);
+  margin: 0 auto;
+}
+
+.google-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* =========================
+   PERFIL GOOGLE INICIAL
+========================= */
+
+.google-profile-modal {
+  z-index: 3100;
+}
+
+.google-profile-content {
+  width: min(420px, calc(100vw - 24px));
+}
+
+.google-profile-content form {
+  display: grid;
+  gap: 10px;
+}
+
+.google-profile-content label {
+  font-size: 13px;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.google-profile-content input,
+.google-profile-content select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #0b1118;
+  color: #e5e7eb;
+  padding: 10px 12px;
+}
+
+.google-profile-content p {
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .google-profile-modal {
+    z-index: 3200;
+  }
+
+  .google-profile-content {
+    max-height: calc(100dvh - 32px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+}
+
+.google-profile-help {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 4px;
+  line-height: 1.35;
+}
