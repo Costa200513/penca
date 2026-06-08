@@ -464,7 +464,7 @@ function renderShell() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se cierran 30 minutos antes del inicio de cada partido </p>
+  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se habilitan dos días antes de cada partido y cierran 30 minutos antes del inicio. </p>
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
@@ -1081,31 +1081,85 @@ async function savePrediction(e) {
   if (matchNotYetOpen(selectedMatch))
     return alert(predictionOpenLabel(selectedMatch));
   if (matchClosed(selectedMatch)) return alert("Este partido ya está cerrado.");
-  const goalsA = parseGoalValue($("predA").value),
-    goalsB = parseGoalValue($("predB").value),
-    penaltyWinnerId = $("predPenalty")?.value || "";
+
+  const goalsA = parseGoalValue($("predA").value);
+  const goalsB = parseGoalValue($("predB").value);
+  const penaltyWinnerId = $("predPenalty")?.value || "";
+
   if (goalsA === null || goalsB === null)
     return alert("Los goles deben ser números enteros entre 0 y 50.");
+
   const submitButton =
     e.submitter ||
     e.target.querySelector("button[type='submit'], button:not([type])");
+
+  const predictionId = `${currentUser.uid}_${selectedMatch.id}`;
+  const predictionRef = doc(db, "predictions", predictionId);
+
   try {
     setButtonLoading(submitButton, true, "Guardando...");
-    await setDoc(
-      doc(db, "predictions", `${currentUser.uid}_${selectedMatch.id}`),
-      {
-        uid: currentUser.uid,
-        matchId: selectedMatch.id,
+
+    const existingPrediction = await getDoc(predictionRef);
+
+    if (existingPrediction.exists()) {
+      /*
+        Al editar, no se vuelve a escribir uid, matchId ni createdAt.
+        Esto evita choques con reglas y con predicciones antiguas.
+      */
+      await updateDoc(predictionRef, {
         goalsA,
         goalsB,
         penaltyWinnerId,
         updatedAt: serverTimestamp(),
-      },
-      { merge: true },
+      });
+    } else {
+      /*
+        Al crear, se guardan todos los campos base.
+      */
+      await setDoc(predictionRef, {
+        uid: currentUser.uid,
+        matchId: String(selectedMatch.id),
+        goalsA,
+        goalsB,
+        penaltyWinnerId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    const previousIndex = predictions.findIndex(
+      (p) =>
+        p.id === predictionId ||
+        (p.uid === currentUser.uid && p.matchId == selectedMatch.id),
     );
+
+    const localPrediction = {
+      ...(previousIndex >= 0 ? predictions[previousIndex] : {}),
+      id: predictionId,
+      uid: currentUser.uid,
+      matchId: String(selectedMatch.id),
+      goalsA,
+      goalsB,
+      penaltyWinnerId,
+    };
+
+    if (previousIndex >= 0) {
+      predictions[previousIndex] = localPrediction;
+    } else {
+      predictions.push(localPrediction);
+    }
+
     closeModal();
+    renderAll();
     await loadData();
     renderAll();
+  } catch (err) {
+    console.error(err);
+    alert(
+      err.code === "permission-denied"
+        ? "No se pudo guardar el cambio por permisos. Revisá las reglas de Firestore."
+        : "No se pudo guardar la predicción. Intentá nuevamente.",
+    );
   } finally {
     setButtonLoading(submitButton, false);
   }
