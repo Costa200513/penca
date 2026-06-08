@@ -290,7 +290,9 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   const snap = await getDoc(doc(db, "users", user.uid));
   if (!snap.exists()) {
-    alert("No existe perfil de usuario en Firestore.");
+    alert(
+      "Tu usuario todavía no fue activado. Iniciá sesión nuevamente o contactá al administrador.",
+    );
     await signOut(auth);
     window.location.href = "login.html";
     return;
@@ -496,8 +498,8 @@ function renderMatchCard(m) {
   const closed = klass === "closed" || klass === "loaded" || !assigned;
   const resultHtml =
     m.status === "played"
-      ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>Resultado</span>`
-      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span> Tu pronóstico</span>`;
+      ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>  Resultado</span>`
+      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span>  Tu pronóstico</span>`;
   return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : matchNotYetOpen(m) ? "Próximamente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
 }
 function phaseName(id) {
@@ -666,7 +668,7 @@ function renderProfile() {
             .map((p, i) => {
               const m = matches.find((x) => x.id === p.matchId);
               const st = scorePrediction(p, m || {});
-              return `<div id="hist-${i}" class="history-detail"><p><strong>Partido:</strong> ${esc(teamName(m?.teamAId))} vs ${esc(teamName(m?.teamBId))}</p><p><strong> Tu pronóstico:</strong> ${p.goalsA} - ${p.goalsB}</p><p><strong>Resultado real:</strong> ${m?.status === "played" ? `${m.goalsA} - ${m.goalsB}` : "Pendiente"}</p><p><strong>Puntos:</strong> ${st.points}</p><p><strong>Estado:</strong> ${esc(st.type)}</p></div>`;
+              return `<div id="hist-${i}" class="history-detail"><p><strong>Partido:</strong> ${esc(teamName(m?.teamAId))} vs ${esc(teamName(m?.teamBId))}</p><p><strong> Tu pronóstico:</strong> ${p.goalsA} - ${p.goalsB}</p><p><strong> Resultado real:</strong> ${m?.status === "played" ? `${m.goalsA} - ${m.goalsB}` : "Pendiente"}</p><p><strong>Puntos:</strong> ${st.points}</p><p><strong>Estado:</strong> ${esc(st.type)}</p></div>`;
             })
             .join("")}`
         : '<p class="subtitle">Todavía no hiciste pronósticos.</p>'

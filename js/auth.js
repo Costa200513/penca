@@ -62,6 +62,68 @@ function traducirErrorFirebase(code) {
   return errores[code] || "Ocurrió un error. Intentá nuevamente.";
 }
 
+async function ensureVerifiedUserProfile(user) {
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (userSnap.exists()) return true;
+
+  const pendingRef = doc(db, "pendingUsers", user.uid);
+  const pendingSnap = await getDoc(pendingRef);
+
+  if (!pendingSnap.exists()) {
+    throw new Error(
+      "No se encontraron datos pendientes para activar el usuario. Contactá al administrador.",
+    );
+  }
+
+  const pending = pendingSnap.data();
+  const username = pending.username;
+
+  if (!username) {
+    throw new Error("Los datos pendientes del usuario están incompletos.");
+  }
+
+  const usernameRef = doc(db, "usernames", username);
+  const usernameSnap = await getDoc(usernameRef);
+
+  if (usernameSnap.exists()) {
+    throw new Error(
+      "El nombre de usuario ya fue tomado. Contactá al administrador.",
+    );
+  }
+
+  const batch = writeBatch(db);
+
+  batch.set(userRef, {
+    uid: user.uid,
+    username: pending.username,
+    fullName: pending.fullName,
+    email: user.email,
+    participantType: pending.participantType,
+    specialty: pending.specialty,
+    year: pending.year,
+    role: "user",
+    active: true,
+    championId: "",
+    championName: "",
+    createdAt: serverTimestamp(),
+    activatedAt: serverTimestamp(),
+  });
+
+  batch.set(usernameRef, {
+    uid: user.uid,
+    createdAt: serverTimestamp(),
+  });
+
+  batch.delete(doc(db, "pendingUsernames", username));
+  batch.delete(pendingRef);
+
+  await batch.commit();
+
+  return true;
+}
+
 /* =========================
    REGISTRO
    La verificación de correo se envía SOLO acá.
@@ -119,8 +181,8 @@ if (registerForm) {
     try {
       setButtonLoading(submitButton, true, "Registrando...");
       /*
-        Primero se revisa si el nombre de usuario ya existe.
-        Esta lectura depende de la colección usernames.
+        Primero se revisa si el nombre de usuario ya existe como definitivo
+        o si está reservado temporalmente por una cuenta pendiente de verificación.
       */
       const usernameRef = doc(db, "usernames", username);
       const usernameSnap = await getDoc(usernameRef);
@@ -130,8 +192,21 @@ if (registerForm) {
         return;
       }
 
+      const pendingUsernameRef = doc(db, "pendingUsernames", username);
+      const pendingUsernameSnap = await getDoc(pendingUsernameRef);
+
+      if (pendingUsernameSnap.exists()) {
+        showMessage(
+          message,
+          "Ese nombre de usuario está pendiente de verificación. Probá con otro.",
+        );
+        return;
+      }
+
       /*
-        Se crea la cuenta en Firebase Authentication.
+        Se crea SOLO la cuenta en Firebase Authentication.
+        El perfil definitivo en users y la reserva definitiva en usernames
+        se crean recién después de verificar el correo e iniciar sesión.
       */
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -149,13 +224,13 @@ if (registerForm) {
       });
 
       /*
-        Se guardan los datos del usuario en Firestore.
+        Datos temporales hasta que el correo sea verificado.
+        Esto evita que usuarios no verificados aparezcan en ranking,
+        gestión de usuarios o colección users.
       */
       const batch = writeBatch(db);
 
-      const userRef = doc(db, "users", user.uid);
-
-      batch.set(userRef, {
+      batch.set(doc(db, "pendingUsers", user.uid), {
         uid: user.uid,
         username,
         fullName,
@@ -163,13 +238,10 @@ if (registerForm) {
         participantType,
         specialty,
         year,
-        role: "user",
-        active: true,
-        championId: "",
         createdAt: serverTimestamp(),
       });
 
-      batch.set(usernameRef, {
+      batch.set(pendingUsernameRef, {
         uid: user.uid,
         createdAt: serverTimestamp(),
       });
@@ -185,7 +257,7 @@ if (registerForm) {
 
       showMessage(
         message,
-        "Cuenta creada correctamente. Te enviamos un correo para verificar tu cuenta. Revisá tu bandeja de entrada o spam.",
+        "Cuenta creada. Te enviamos un correo para verificar tu cuenta, revisa la carpeta de spam.",
         "success",
       );
 
@@ -200,7 +272,10 @@ if (registerForm) {
       }, 3500);
     } catch (error) {
       console.error(error);
-      showMessage(message, traducirErrorFirebase(error.code));
+      showMessage(
+        message,
+        error.code ? traducirErrorFirebase(error.code) : error.message,
+      );
     } finally {
       setButtonLoading(submitButton, false);
     }
@@ -247,6 +322,13 @@ if (loginForm) {
       const user = userCredential.user;
 
       /*
+        Se fuerza la actualización del estado real de verificación.
+        Esto evita usar un token viejo con email_verified: false.
+      */
+      await user.reload();
+      await user.getIdToken(true);
+
+      /*
         No se reenvía verificación acá.
         Solo se bloquea el acceso si todavía no verificó.
       */
@@ -262,12 +344,17 @@ if (loginForm) {
       }
 
       /*
-        Si está verificado, entra a la app.
+        Si está verificado, se activa el perfil definitivo si todavía
+        estaba pendiente, y recién después entra a la app.
       */
+      await ensureVerifiedUserProfile(user);
       window.location.href = "app.html";
     } catch (error) {
       console.error(error);
-      showMessage(message, traducirErrorFirebase(error.code));
+      showMessage(
+        message,
+        error.code ? traducirErrorFirebase(error.code) : error.message,
+      );
     } finally {
       setButtonLoading(submitButton, false);
     }
@@ -312,7 +399,10 @@ if (resetForm) {
       );
     } catch (error) {
       console.error(error);
-      showMessage(message, traducirErrorFirebase(error.code));
+      showMessage(
+        message,
+        error.code ? traducirErrorFirebase(error.code) : error.message,
+      );
     } finally {
       setButtonLoading(submitButton, false);
     }

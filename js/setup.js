@@ -10,83 +10,99 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 let user = null;
+let userData = null;
 
-const log = (t) => {
+const log = (text) => {
   const el = document.getElementById("setupLog");
-  if (el) el.innerHTML += `<br>${t}`;
+  if (el) el.innerHTML += `<br>${text}`;
 };
 
-const getUsernameFromEmail = (email) => {
-  return (email || "admin")
-    .split("@")[0]
-    .replace(/[^a-z0-9_.]/gi, "")
-    .toLowerCase();
+const setButtonState = (disabled, text) => {
+  const btn = document.getElementById("loadBtn");
+  if (!btn) return;
+  btn.disabled = disabled;
+  if (text) btn.textContent = text;
 };
 
-onAuthStateChanged(auth, (u) => {
+/*
+  SETUP PROTEGIDO PARA PRODUCCIÓN
+
+  Este archivo ya NO convierte a cualquier usuario autenticado en admin.
+  Para usarlo en producción, el usuario conectado ya debe existir en users/{uid}
+  con role: "admin" y active: true.
+
+  El setup inicial, cuando todavía no existe ningún admin, debe hacerse solo
+  en configuración local/temporal usando reglas iniciales y luego publicar
+  firestore-rules-finales.txt.
+*/
+
+onAuthStateChanged(auth, async (u) => {
   if (!u) {
     window.location.href = "login.html";
     return;
   }
 
   user = u;
-  document.getElementById("setupUser").textContent = u.email;
-});
+  document.getElementById("setupUser").textContent = u.email || u.uid;
 
-document.getElementById("loadBtn").addEventListener("click", async () => {
-  if (!user) return;
-
-  const btn = document.getElementById("loadBtn");
-  btn.disabled = true;
-  btn.textContent = "Cargando...";
+  if (!u.emailVerified) {
+    log("Acceso bloqueado: primero verificá el correo electrónico.");
+    setButtonState(true, "Setup bloqueado");
+    return;
+  }
 
   try {
-    const username = getUsernameFromEmail(user.email);
+    const snap = await getDoc(doc(db, "users", u.uid));
 
-    log("Creando perfil admin...");
-
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        uid: user.uid,
-        email: user.email,
-        username,
-        fullName: "Administrador",
-        role: "admin",
-        active: true,
-        participantType: "teacher",
-        specialty: "Administración",
-        year: "",
-        championId: "",
-        championName: "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    /*
-      Corrección importante:
-      No usamos setDoc(..., { merge: true }) directamente en usernames,
-      porque si el documento ya existe Firestore lo interpreta como update.
-      Tus reglas permiten create, pero bloquean update/delete en usernames.
-    */
-    log("Verificando username admin...");
-
-    const usernameRef = doc(db, "usernames", username);
-    const usernameSnap = await getDoc(usernameRef);
-
-    if (!usernameSnap.exists()) {
-      await setDoc(usernameRef, {
-        uid: user.uid,
-        createdAt: serverTimestamp(),
-      });
-
-      log("Username admin creado.");
-    } else {
-      log("Username admin ya existía. Se omite para evitar error de permisos.");
+    if (!snap.exists()) {
+      log(
+        "Acceso bloqueado: este usuario no tiene perfil definitivo en users.",
+      );
+      log("El setup inicial no debe ejecutarse desde producción pública.");
+      setButtonState(true, "Setup bloqueado");
+      return;
     }
 
+    userData = snap.data();
+
+    if (userData.role !== "admin" || userData.active !== true) {
+      log(
+        "Acceso bloqueado: solo un admin activo puede ejecutar este setup protegido.",
+      );
+      setButtonState(true, "Setup bloqueado");
+      return;
+    }
+
+    log(
+      "Admin verificado. Podés recargar datos base si realmente es necesario.",
+    );
+    setButtonState(false, "Cargar base protegida");
+  } catch (err) {
+    console.error(err);
+    log(
+      "ERROR: no se pudo verificar el rol admin. Revisá reglas de Firestore.",
+    );
+    setButtonState(true, "Setup bloqueado");
+  }
+});
+
+document.getElementById("loadBtn")?.addEventListener("click", async () => {
+  if (!user || userData?.role !== "admin" || userData?.active !== true) {
+    log("Acción bloqueada: el usuario conectado no es admin activo.");
+    return;
+  }
+
+  if (
+    !confirm(
+      "Este setup recargará fases, equipos, partidos y configuración. ¿Continuar?",
+    )
+  ) {
+    return;
+  }
+
+  setButtonState(true, "Cargando...");
+
+  try {
     log("Cargando fases...");
 
     let batch = writeBatch(db);
@@ -117,7 +133,8 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    // Placeholders automáticos para ganadores de cruces.
+    log("Cargando placeholders...");
+
     for (let i = 73; i <= 104; i++) {
       batch.set(doc(db, "teams", `WIN_${i}`), {
         id: `WIN_${i}`,
@@ -132,7 +149,6 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    // Placeholders automáticos para perdedores de semifinales.
     for (let i = 101; i <= 102; i++) {
       batch.set(doc(db, "teams", `LOS_${i}`), {
         id: `LOS_${i}`,
@@ -168,6 +184,7 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
         winnerId: "",
         order: m.n,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       if (++count % 400 === 0) {
@@ -176,23 +193,24 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    batch.set(doc(db, "settings", "tournament"), {
-      predictionsCloseMinutes: 30,
-      predictionOpenDaysBefore: 2,
-      realChampionId: "",
-      updatedAt: serverTimestamp(),
-    });
+    batch.set(
+      doc(db, "settings", "tournament"),
+      {
+        predictionsCloseMinutes: 30,
+        predictionOpenDaysBefore: 2,
+        realChampionId: "",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     await batch.commit();
 
-    log(
-      "Base cargada correctamente con fechas normales. Ahora publicá las reglas finales.",
-    );
+    log("Base recargada correctamente por admin verificado.");
   } catch (err) {
     console.error(err);
-    log("ERROR: " + err.message);
+    log("ERROR: " + (err.message || "No se pudo ejecutar setup protegido."));
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Cargar base y hacerme admin";
+    setButtonState(false, "Cargar base protegida");
   }
 });
