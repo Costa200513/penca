@@ -87,8 +87,13 @@ function getMatchName(m = {}) {
 function predictionOpenDate(m = {}) {
   const dateOnly = parseDateOnlyFromMatch(m);
   if (!dateOnly) return null;
+
+  const daysBefore = Number(settings.predictionOpenDaysBefore ?? 2);
   const [year, month, day] = dateOnly.split("-").map(Number);
-  const openDate = new Date(year, month - 1, day - 2, 0, 0, 0, 0);
+
+  const openDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  openDate.setDate(openDate.getDate() - daysBefore);
+
   return openDate;
 }
 
@@ -133,10 +138,29 @@ function notifyNewUploadedResults(newMatches) {
   });
 }
 
+function isUserEditingCriticalForm() {
+  const active = document.activeElement;
+  if (!active) return false;
+
+  const isTypingElement =
+    active.matches("input, select, textarea") || active.closest("form");
+
+  const insideAdmin = active.closest("#admin");
+  const insideModal = active.closest("#predictionModal");
+
+  return !!isTypingElement && !!(insideAdmin || insideModal);
+}
+
 function renderSoon() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => {
-    if (currentUser && userData) renderAll();
+    if (!currentUser || !userData) return;
+
+    if (isUserEditingCriticalForm()) {
+      return;
+    }
+
+    renderAll();
   }, 80);
 }
 
@@ -802,7 +826,7 @@ function renderRightPanel() {
     </div>
     <div class="next-match">
       <h4>Próximo partido</h4>
-      ${next ? `<strong>${esc(teamName(next.teamAId))} vs ${esc(teamName(next.teamBId))}</strong><p>${esc(next.dateText || "Horario a confirmar")}</p>${isAdmin() ? `<button class="action-btn next-match-btn" onclick="goToAdminNextMatch('admin-${next.phase}', 'admin-match-${next.id}')">Determinar</button>` : `<button class="action-btn next-match-btn" onclick="goToNextMatch('fase-${next.phase}', 'match-${next.id}')">Pronosticar</button>`}` : "<p>No hay partidos abiertos.</p>"}
+      ${next ? `<strong>${esc(teamName(next.teamAId))} vs ${esc(teamName(next.teamBId))}</strong><p>${esc(matchDateLine(next))}${matchVenueLine(next) ? `<br>${esc(matchVenueLine(next))}` : ""}</p>${isAdmin() ? `<button class="action-btn next-match-btn" onclick="goToAdminNextMatch('admin-${next.phase}', 'admin-match-${next.id}')">Determinar</button>` : `<button class="action-btn next-match-btn" onclick="goToNextMatch('fase-${next.phase}', 'match-${next.id}')">Pronosticar</button>`}` : "<p>No hay partidos abiertos.</p>"}
     </div>
     <div class="rules-box">
       <h4>Reglas rápidas</h4>
@@ -1033,8 +1057,14 @@ function openPrediction(id) {
   if (matchNotYetOpen(selectedMatch))
     return alert(predictionOpenLabel(selectedMatch));
   if (matchClosed(selectedMatch)) return alert("Este partido ya está cerrado.");
+
+  const previous = userPrediction(selectedMatch.id);
+  const previousGoalsA = previous?.goalsA ?? 0;
+  const previousGoalsB = previous?.goalsB ?? 0;
+  const previousPenalty = previous?.penaltyWinnerId || "";
+
   $("predictionModal").innerHTML =
-    `<div class="modal-content"><h2>${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}</h2><p>Ingresá tu pronóstico.</p><form id="predictionForm"><div class="score-inputs"><div class="team-input"><label>${esc(teamName(selectedMatch.teamAId))}</label><input id="predA" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="0"></div><span class="vs">VS</span><div class="team-input"><label>${esc(teamName(selectedMatch.teamBId))}</label><input id="predB" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="0"></div></div>${phases.find((f) => f.id === selectedMatch.phase)?.knockout ? `<div class="penalty-box active"><label>Ganador por penales</label><select id="predPenalty">${matchTeamOptionsSorted(selectedMatch, "", true)}</select></div>` : ""}<div class="modal-actions"><button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button><button class="save-btn">Guardar</button></div></form></div>`;
+    `<div class="modal-content"><h2>${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}</h2><p>Ingresá tu pronóstico.</p><form id="predictionForm"><div class="score-inputs"><div class="team-input"><label>${esc(teamName(selectedMatch.teamAId))}</label><input id="predA" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsA}"></div><span class="vs">VS</span><div class="team-input"><label>${esc(teamName(selectedMatch.teamBId))}</label><input id="predB" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsB}"></div></div>${phases.find((f) => f.id === selectedMatch.phase)?.knockout ? `<div class="penalty-box active"><label>Ganador por penales</label><select id="predPenalty">${matchTeamOptionsSorted(selectedMatch, previousPenalty, true)}</select></div>` : ""}<div class="modal-actions"><button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button><button class="save-btn">Guardar</button></div></form></div>`;
   $("predictionModal").classList.add("active");
   $("predictionForm").addEventListener("submit", savePrediction);
   attachGoalValidation($("predictionModal"));
