@@ -464,7 +464,7 @@ function renderShell() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se habilitan dos días antes de cada partido y cierran 30 minutos antes del inicio. </p>
+  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se cierran 30 minutos antes del inicio de cada partido </p>
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
