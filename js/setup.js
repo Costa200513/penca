@@ -23,6 +23,87 @@ const getUsernameFromEmail = (email) => {
     .toLowerCase();
 };
 
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toLocalDateOnly(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toDateText(date, label = "") {
+  const base = date.toLocaleDateString("es-UY", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  });
+
+  return `${label ? label + " · " : ""}${base} - ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/*
+  SETUP TEMPORAL PARA PROBAR TIEMPOS
+
+  Partido 1:
+  - Arranca en 32 minutos.
+  - Como la app cierra pronósticos 30 minutos antes, se bloquea en 2 minutos.
+
+  Partido 2:
+  - Ya está habilitado.
+  - Arranca en 4 horas.
+
+  Partido 3:
+  - Se habilita en 3 minutos usando el campo temporal testOpenAt.
+  - Para que funcione, app.js debe tener el pequeño soporte temporal para testOpenAt
+    dentro de predictionOpenDate().
+*/
+function getTestMatchTiming(matchNumber) {
+  const now = new Date();
+
+  if (matchNumber === 1) {
+    const start = new Date(now.getTime() + 32 * 60 * 1000);
+
+    return {
+      dateTime: start.toISOString(),
+      dateOnly: toLocalDateOnly(start),
+      dateText: toDateText(start, "Prueba: se bloquea en 2 min"),
+      testOpenAt: "",
+    };
+  }
+
+  if (matchNumber === 2) {
+    const start = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+    return {
+      dateTime: start.toISOString(),
+      dateOnly: toLocalDateOnly(start),
+      dateText: toDateText(start, "Prueba: ya habilitado"),
+      testOpenAt: "",
+    };
+  }
+
+  if (matchNumber === 3) {
+    const start = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+    const open = new Date(now.getTime() + 3 * 60 * 1000);
+
+    return {
+      dateTime: start.toISOString(),
+      dateOnly: toLocalDateOnly(start),
+      dateText: toDateText(start, "Prueba: habilita en 3 min"),
+      testOpenAt: open.toISOString(),
+    };
+  }
+
+  const start = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    dateTime: start.toISOString(),
+    dateOnly: toLocalDateOnly(start),
+    dateText: toDateText(start, "Prueba: bloqueado"),
+    testOpenAt: "",
+  };
+}
+
 onAuthStateChanged(auth, (u) => {
   if (!u) {
     window.location.href = "login.html";
@@ -38,7 +119,7 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
 
   const btn = document.getElementById("loadBtn");
   btn.disabled = true;
-  btn.textContent = "Cargando...";
+  btn.textContent = "Cargando prueba...";
 
   try {
     const username = getUsernameFromEmail(user.email);
@@ -65,12 +146,6 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       { merge: true },
     );
 
-    /*
-      Corrección importante:
-      No usamos setDoc(..., { merge: true }) directamente en usernames,
-      porque si el documento ya existe Firestore lo interpreta como update.
-      Tus reglas permiten create, pero bloquean update/delete en usernames.
-    */
     log("Verificando username admin...");
 
     const usernameRef = doc(db, "usernames", username);
@@ -117,7 +192,8 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    // Placeholders automáticos para ganadores de cruces.
+    log("Cargando placeholders...");
+
     for (let i = 73; i <= 104; i++) {
       batch.set(doc(db, "teams", `WIN_${i}`), {
         id: `WIN_${i}`,
@@ -132,7 +208,6 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    // Placeholders automáticos para perdedores de semifinales.
     for (let i = 101; i <= 102; i++) {
       batch.set(doc(db, "teams", `LOS_${i}`), {
         id: `LOS_${i}`,
@@ -147,9 +222,11 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
       }
     }
 
-    log("Cargando partidos...");
+    log("Cargando partidos con tiempos de prueba...");
 
     for (const m of MATCHES) {
+      const timing = getTestMatchTiming(Number(m.n));
+
       batch.set(doc(db, "matches", String(m.n)), {
         id: String(m.n),
         number: m.n,
@@ -157,9 +234,9 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
         group: m.g || "",
         teamAId: m.a,
         teamBId: m.b,
-        dateTime: m.dt || "",
-        dateOnly: m.dateOnly || "",
-        dateText: m.txt || "Horario a confirmar",
+        dateTime: timing.dateTime,
+        dateOnly: timing.dateOnly,
+        dateText: timing.dateText,
         venue: m.v || "",
         status: "pending",
         goalsA: null,
@@ -167,7 +244,9 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
         penaltyWinnerId: "",
         winnerId: "",
         order: m.n,
+        testOpenAt: timing.testOpenAt,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       if (++count % 400 === 0) {
@@ -185,9 +264,11 @@ document.getElementById("loadBtn").addEventListener("click", async () => {
 
     await batch.commit();
 
-    log(
-      "Base cargada correctamente con fechas normales. Ahora publicá las reglas finales.",
-    );
+    log("Prueba cargada correctamente.");
+    log("Partido 1: se bloquea en 2 minutos.");
+    log("Partido 2: ya está habilitado.");
+    log("Partido 3: se habilita en 3 minutos.");
+    log("Abrí app.html?v=test-tiempos para probar.");
   } catch (err) {
     console.error(err);
     log("ERROR: " + err.message);
