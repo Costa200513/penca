@@ -334,6 +334,61 @@ function renderAll() {
   }
 }
 
+function activeSectionId() {
+  return document.querySelector(".section.active")?.id || "";
+}
+
+function fixtureScrollSnapshot() {
+  /*
+    Guarda el scroll solamente si el usuario está en Fixture.
+    No se usa en Ranking, Perfil, Reglas, Admin ni Usuarios.
+  */
+  if (activeSectionId() !== "fixture") return null;
+
+  const activePhase = document.querySelector("#fixture .fixture-phase.active");
+
+  return {
+    sectionId: "fixture",
+    scrollY: window.scrollY,
+    phaseId: activePhase?.id || "",
+  };
+}
+
+function restoreFixtureScroll(snapshot) {
+  if (!snapshot || snapshot.sectionId !== "fixture") return;
+  if (activeSectionId() !== "fixture") return;
+
+  requestAnimationFrame(() => {
+    if (snapshot.phaseId) {
+      const phase = document.getElementById(snapshot.phaseId);
+      const phaseButton = [
+        ...document.querySelectorAll("#fixture .phase-btn"),
+      ].find((button) =>
+        button.getAttribute("onclick")?.includes(snapshot.phaseId),
+      );
+
+      if (phase && phaseButton) {
+        document
+          .querySelectorAll("#fixture .fixture-phase")
+          .forEach((item) => item.classList.remove("active"));
+
+        document
+          .querySelectorAll("#fixture .phase-btn")
+          .forEach((button) => button.classList.remove("active"));
+
+        phase.classList.add("active");
+        phaseButton.classList.add("active");
+      }
+    }
+
+    window.scrollTo({
+      top: snapshot.scrollY,
+      left: 0,
+      behavior: "auto",
+    });
+  });
+}
+
 function isAdmin() {
   return userData?.role === "admin";
 }
@@ -464,7 +519,7 @@ function renderShell() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos se habilitan dos días antes de cada partido y cierran 30 minutos antes del inicio. </p>
+  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos permanecen abiertos y cierran 30 minutos antes del inicio. </p>
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
@@ -956,8 +1011,11 @@ async function saveResult(e) {
       status: "played",
       updatedAt: serverTimestamp(),
     });
+    const scrollSnapshot = fixtureScrollSnapshot();
+
     await loadData();
     renderAll();
+    restoreFixtureScroll(scrollSnapshot);
   } finally {
     setButtonLoading(submitButton, false);
   }
@@ -1016,8 +1074,11 @@ async function saveSchedule(e) {
     updatedAt: serverTimestamp(),
   });
 
+  const scrollSnapshot = fixtureScrollSnapshot();
+
   await loadData();
   renderAll();
+  restoreFixtureScroll(scrollSnapshot);
 }
 
 async function saveTeams(e) {
@@ -1030,8 +1091,11 @@ async function saveTeams(e) {
     teamBId: fd.get("teamBId"),
     updatedAt: serverTimestamp(),
   });
+  const scrollSnapshot = fixtureScrollSnapshot();
+
   await loadData();
   renderAll();
+  restoreFixtureScroll(scrollSnapshot);
 }
 async function saveRealChampion(e) {
   e.preventDefault();
@@ -1149,10 +1213,15 @@ async function savePrediction(e) {
       predictions.push(localPrediction);
     }
 
+    const scrollSnapshot = fixtureScrollSnapshot();
+
     closeModal();
     renderAll();
+    restoreFixtureScroll(scrollSnapshot);
+
     await loadData();
     renderAll();
+    restoreFixtureScroll(scrollSnapshot);
   } catch (err) {
     console.error(err);
     alert(
