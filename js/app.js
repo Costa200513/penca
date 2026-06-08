@@ -338,42 +338,68 @@ function activeSectionId() {
   return document.querySelector(".section.active")?.id || "";
 }
 
-function fixtureScrollSnapshot() {
+function saveSectionScrollSnapshot() {
   /*
-    Guarda el scroll solamente si el usuario está en Fixture.
-    No se usa en Ranking, Perfil, Reglas, Admin ni Usuarios.
+    Guarda posición solo para secciones donde se edita/guarda contenido:
+    Fixture y Admin. No se usa para Ranking, Perfil, Reglas ni Usuarios.
   */
-  if (activeSectionId() !== "fixture") return null;
+  const sectionId = activeSectionId();
 
-  const activePhase = document.querySelector("#fixture .fixture-phase.active");
+  if (!["fixture", "admin"].includes(sectionId)) return null;
+
+  const section = document.getElementById(sectionId);
+  const activePhase = section?.querySelector(".fixture-phase.active");
 
   return {
-    sectionId: "fixture",
+    sectionId,
     scrollY: window.scrollY,
     phaseId: activePhase?.id || "",
   };
 }
 
-function restoreFixtureScroll(snapshot) {
-  if (!snapshot || snapshot.sectionId !== "fixture") return;
-  if (activeSectionId() !== "fixture") return;
+function restoreSectionScrollSnapshot(snapshot) {
+  if (!snapshot || !snapshot.sectionId) return;
 
   requestAnimationFrame(() => {
+    const section = document.getElementById(snapshot.sectionId);
+    if (!section) return;
+
+    /*
+      Restauramos la misma sección sin usar showSection(),
+      porque showSection está reservado para navegación manual
+      y siempre manda arriba.
+    */
+    document
+      .querySelectorAll(".section")
+      .forEach((item) => item.classList.remove("active"));
+
+    section.classList.add("active");
+
+    document
+      .querySelectorAll(".menu button")
+      .forEach((button) => button.classList.remove("active"));
+
+    const menuButton = [...document.querySelectorAll(".menu button")].find(
+      (button) =>
+        button.getAttribute("onclick")?.includes(`'${snapshot.sectionId}'`) ||
+        button.getAttribute("onclick")?.includes(`"${snapshot.sectionId}"`),
+    );
+
+    menuButton?.classList.add("active");
+
     if (snapshot.phaseId) {
       const phase = document.getElementById(snapshot.phaseId);
-      const phaseButton = [
-        ...document.querySelectorAll("#fixture .phase-btn"),
-      ].find((button) =>
-        button.getAttribute("onclick")?.includes(snapshot.phaseId),
+      const phaseButton = [...section.querySelectorAll(".phase-btn")].find(
+        (button) => button.getAttribute("onclick")?.includes(snapshot.phaseId),
       );
 
       if (phase && phaseButton) {
-        document
-          .querySelectorAll("#fixture .fixture-phase")
+        section
+          .querySelectorAll(".fixture-phase")
           .forEach((item) => item.classList.remove("active"));
 
-        document
-          .querySelectorAll("#fixture .phase-btn")
+        section
+          .querySelectorAll(".phase-btn")
           .forEach((button) => button.classList.remove("active"));
 
         phase.classList.add("active");
@@ -383,6 +409,16 @@ function restoreFixtureScroll(snapshot) {
 
     window.scrollTo({
       top: snapshot.scrollY,
+      left: 0,
+      behavior: "auto",
+    });
+  });
+}
+
+function scrollTopAfterSectionChange() {
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: 0,
       left: 0,
       behavior: "auto",
     });
@@ -1002,6 +1038,8 @@ async function saveResult(e) {
   else if (goalsB > goalsA) winnerId = m.teamBId;
   else if (penaltyWinnerId) winnerId = penaltyWinnerId;
   try {
+    const scrollSnapshot = saveSectionScrollSnapshot();
+
     setButtonLoading(submitButton, true, "Guardando...");
     await updateDoc(doc(db, "matches", id), {
       goalsA,
@@ -1011,11 +1049,9 @@ async function saveResult(e) {
       status: "played",
       updatedAt: serverTimestamp(),
     });
-    const scrollSnapshot = fixtureScrollSnapshot();
-
     await loadData();
     renderAll();
-    restoreFixtureScroll(scrollSnapshot);
+    restoreSectionScrollSnapshot(scrollSnapshot);
   } finally {
     setButtonLoading(submitButton, false);
   }
@@ -1067,6 +1103,8 @@ async function saveSchedule(e) {
   const dateTime = `${dateOnly}T${matchTime}:00-03:00`;
   const dateText = `${weekdayDateLabel(dateOnly)} · ${matchTime} UY${m?.venue ? " · " + m.venue : ""}`;
 
+  const scrollSnapshot = saveSectionScrollSnapshot();
+
   await updateDoc(doc(db, "matches", id), {
     dateOnly,
     dateTime,
@@ -1074,11 +1112,9 @@ async function saveSchedule(e) {
     updatedAt: serverTimestamp(),
   });
 
-  const scrollSnapshot = fixtureScrollSnapshot();
-
   await loadData();
   renderAll();
-  restoreFixtureScroll(scrollSnapshot);
+  restoreSectionScrollSnapshot(scrollSnapshot);
 }
 
 async function saveTeams(e) {
@@ -1086,16 +1122,16 @@ async function saveTeams(e) {
   if (!confirm("¿Seguro que querés actualizar los equipos?")) return;
   const id = e.target.dataset.match;
   const fd = new FormData(e.target);
+  const scrollSnapshot = saveSectionScrollSnapshot();
+
   await updateDoc(doc(db, "matches", id), {
     teamAId: fd.get("teamAId"),
     teamBId: fd.get("teamBId"),
     updatedAt: serverTimestamp(),
   });
-  const scrollSnapshot = fixtureScrollSnapshot();
-
   await loadData();
   renderAll();
-  restoreFixtureScroll(scrollSnapshot);
+  restoreSectionScrollSnapshot(scrollSnapshot);
 }
 async function saveRealChampion(e) {
   e.preventDefault();
@@ -1213,15 +1249,15 @@ async function savePrediction(e) {
       predictions.push(localPrediction);
     }
 
-    const scrollSnapshot = fixtureScrollSnapshot();
+    const scrollSnapshot = saveSectionScrollSnapshot();
 
     closeModal();
     renderAll();
-    restoreFixtureScroll(scrollSnapshot);
+    restoreSectionScrollSnapshot(scrollSnapshot);
 
     await loadData();
     renderAll();
-    restoreFixtureScroll(scrollSnapshot);
+    restoreSectionScrollSnapshot(scrollSnapshot);
   } catch (err) {
     console.error(err);
     alert(
@@ -1258,6 +1294,12 @@ window.showSection = (id, btn) => {
     .forEach((b) => b.classList.remove("active"));
   btn?.classList.add("active");
   closeMobileMenu();
+
+  /*
+    Al cambiar manualmente de apartado, siempre empezamos arriba.
+    Así el scroll del Fixture no se arrastra al Ranking u otras secciones.
+  */
+  scrollTopAfterSectionChange();
 };
 window.showFixturePhase = (id, btn) => {
   const parent = btn.closest(".section");
