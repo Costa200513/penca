@@ -443,8 +443,22 @@ function scorePrediction(pred, m) {
 
 function renderShell() {
   $("app").innerHTML = `
-  <aside class="sidebar">
-    <div class="logo logo-large"><div class="logo-icon logo-image"><img src="img/logo_penca.png" alt="Mundial 2026"></div></div>
+  <header class="mobile-topbar">
+    <a class="mobile-logo-link" href="app.html" aria-label="Inicio">
+      <img src="img/logo_penca.png" alt="Mundial 2026">
+    </a>
+    <button class="mobile-menu-toggle" type="button" onclick="toggleMobileMenu()" aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <button class="mobile-menu-overlay" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú"></button>
+
+  <aside class="sidebar" id="mobileSidebar">
+    <div class="mobile-sidebar-head">
+      <div class="logo logo-large"><div class="logo-icon logo-image"><img src="img/logo_penca.png" alt="Mundial 2026"></div></div>
+      <button class="mobile-sidebar-close" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú">×</button>
+    </div>
     <nav class="menu">
       <button class="active" onclick="showSection('fixture', this)">⚽ Fixture</button>
       <button onclick="showSection('ranking', this)">🏆 Ranking</button>
@@ -483,7 +497,7 @@ function renderMatchCard(m) {
   const resultHtml =
     m.status === "played"
       ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>Resultado</span>`
-      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span>Tu pronóstico</span>`;
+      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span> Tu pronóstico</span>`;
   return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : matchNotYetOpen(m) ? "Próximamente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
 }
 function phaseName(id) {
@@ -578,7 +592,7 @@ function renderRankingBlock(title, description, data, mode = "user") {
   const isCurrentUser = (r) =>
     mode === "user" && currentUser && r.uid === currentUser.uid;
 
-  return `<div class="ranking-block"><div class="ranking-list-header"><div><h3>${title}</h3><p>${description}</p></div></div><div class="podium">${podium.map((r) => `<article class="podium-card ${cls[r.position] || ""} ${isCurrentUser(r) ? "current" : ""}"><div class="podium-medal">${med[r.position] || "🏅"}</div><h3 class="podium-username">${label(r)}</h3><p class="podium-realname">${sub(r)}</p><div class="podium-points">${r.points} pts</div><div class="podium-correct">${r.aciertos} aciertos</div><button class="details-btn podium-details-btn" onclick="toggleRankingDetails(this)">+</button><div class="ranking-details podium-details">${detailPills(r)}</div></article>`).join("")}</div><div class="ranking-list">${rest.map((r) => `<div class="ranking-item ${isCurrentUser(r) ? "current" : ""}"><div class="ranking-row"><span class="position">${r.position}.º</span><span class="ranking-user"><strong>${label(r)}</strong><small>${sub(r)}</small></span><span>${r.aciertos} aciertos</span><span class="points">${r.points} pts</span><button class="details-btn" onclick="toggleRankingDetails(this)">+</button></div><div class="ranking-details">${detailPills(r)}</div></div>`).join("") || '<div class="empty-ranking">No hay más posiciones para mostrar.</div>'}</div></div>`;
+  return `<div class="ranking-block"><div class="ranking-list-header"><div><h3>${title}</h3><p>${description}</p></div></div><div class="podium">${podium.map((r) => `<article class="podium-card ${cls[r.position] || ""} ${isCurrentUser(r) ? "current" : ""}"><div class="podium-medal">${med[r.position] || "🏅"}</div><h3 class="podium-username">${label(r)}</h3><p class="podium-realname">${sub(r)}</p><div class="podium-points">${r.points} pts</div><div class="podium-correct">${r.aciertos} aciertos</div><button class="details-btn podium-details-btn" onclick="toggleRankingDetails(this)">+</button><div class="ranking-details podium-details">${detailPills(r)}</div></article>`).join("")}</div><div class="ranking-list">${rest.map((r) => `<div class="ranking-item ${isCurrentUser(r) ? "current" : ""}"><div class="ranking-row"><span class="position">${r.position}.º</span><span class="ranking-user"><strong>${label(r)}</strong><small>${sub(r)}</small></span><span class="ranking-aciertos">${r.aciertos} aciertos</span><span class="points ranking-points">${r.points} pts</span><button class="details-btn" onclick="toggleRankingDetails(this)">+</button></div><div class="ranking-details">${detailPills(r)}</div></div>`).join("") || '<div class="empty-ranking">No hay más posiciones para mostrar.</div>'}</div></div>`;
 }
 
 function currentUserRankingStats() {
@@ -652,7 +666,7 @@ function renderProfile() {
             .map((p, i) => {
               const m = matches.find((x) => x.id === p.matchId);
               const st = scorePrediction(p, m || {});
-              return `<div id="hist-${i}" class="history-detail"><p><strong>Partido:</strong> ${esc(teamName(m?.teamAId))} vs ${esc(teamName(m?.teamBId))}</p><p><strong>Tu pronóstico:</strong> ${p.goalsA} - ${p.goalsB}</p><p><strong>Resultado real:</strong> ${m?.status === "played" ? `${m.goalsA} - ${m.goalsB}` : "Pendiente"}</p><p><strong>Puntos:</strong> ${st.points}</p><p><strong>Estado:</strong> ${esc(st.type)}</p></div>`;
+              return `<div id="hist-${i}" class="history-detail"><p><strong>Partido:</strong> ${esc(teamName(m?.teamAId))} vs ${esc(teamName(m?.teamBId))}</p><p><strong> Tu pronóstico:</strong> ${p.goalsA} - ${p.goalsB}</p><p><strong>Resultado real:</strong> ${m?.status === "played" ? `${m.goalsA} - ${m.goalsB}` : "Pendiente"}</p><p><strong>Puntos:</strong> ${st.points}</p><p><strong>Estado:</strong> ${esc(st.type)}</p></div>`;
             })
             .join("")}`
         : '<p class="subtitle">Todavía no hiciste pronósticos.</p>'
@@ -1109,6 +1123,20 @@ async function savePrediction(e) {
   }
 }
 
+window.toggleMobileMenu = () => {
+  const appShell = document.querySelector(".app");
+  const button = document.querySelector(".mobile-menu-toggle");
+  const isOpen = appShell?.classList.toggle("mobile-menu-open");
+  button?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+};
+
+window.closeMobileMenu = () => {
+  document.querySelector(".app")?.classList.remove("mobile-menu-open");
+  document
+    .querySelector(".mobile-menu-toggle")
+    ?.setAttribute("aria-expanded", "false");
+};
+
 window.showSection = (id, btn) => {
   document
     .querySelectorAll(".section")
@@ -1118,6 +1146,7 @@ window.showSection = (id, btn) => {
     .querySelectorAll(".menu button")
     .forEach((b) => b.classList.remove("active"));
   btn?.classList.add("active");
+  closeMobileMenu();
 };
 window.showFixturePhase = (id, btn) => {
   const parent = btn.closest(".section");
