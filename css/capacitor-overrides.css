@@ -1,0 +1,133 @@
+/*
+ * ====================================================
+ *  capacitor-overrides.css
+ *  Ajustes específicos para la app nativa (Capacitor).
+ *  No se incluye en la web original.
+ * ====================================================
+ */
+
+/*
+ * 1. Safe area — respeta notch superior (status bar Android)
+ *    y barra de navegación inferior (gesture bar / nav bar).
+ */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/*
+ * 2. El topbar móvil necesita padding extra en dispositivos con notch.
+ */
+.mobile-topbar {
+  padding-top: calc(12px + var(--sat));
+}
+
+/*
+ * 3. El sidebar recibe padding-top para no quedar bajo la status bar.
+ */
+.sidebar {
+  padding-top: calc(25px + var(--sat));
+  padding-bottom: calc(25px + var(--sab));
+  padding-left: calc(18px + var(--sal));
+}
+
+/*
+ * 4. La barra lateral móvil (overlay) también respeta el notch.
+ */
+#mobileSidebar {
+  padding-top: calc(20px + var(--sat));
+  padding-bottom: calc(20px + var(--sab));
+}
+
+/*
+ * 5. Contenido principal: no quedar bajo la gesture bar inferior.
+ */
+.main {
+  padding-bottom: calc(42px + var(--sab));
+}
+
+/*
+ * 6. El toast (resultado) sube sobre la gesture bar.
+ */
+.toast,
+.result-upload-toast {
+  bottom: calc(25px + var(--sab));
+}
+
+/*
+ * 7. El modal de predicción: padding inferior para que los botones
+ *    no queden tapados por la gesture bar.
+ */
+.modal-content {
+  margin-bottom: var(--sab);
+}
+
+/*
+ * 8. Deshabilitar el "bounce" de scroll en iOS/Android nativo. (Eliminado porque bloquea scroll en algunos WebViews)
+ */
+
+/*
+ * 9. Pantalla de carga: ocupa toda la pantalla incluyendo safe area.
+ */
+.page-loader {
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+}
+
+/*
+ * 10. Forzar scroll nativo (Body Scroll nativo para WebView)
+ */
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.app {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.mobile-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
+.main {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  flex: 1 !important;
+  padding-bottom: calc(42px + var(--sab)) !important;
+}
+
+/*
+ * 11. Estilos minimalistas para el botón "Atrás"
+ */
+.mobile-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mobile-back-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 6px;
+  margin-left: -6px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.mobile-back-btn.visible {
+  display: flex;
+}
