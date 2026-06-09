@@ -55,6 +55,24 @@ const esc = (v = "") =>
       })[c],
   );
 
+/**
+ * Anuncia un mensaje via live region para screen readers.
+ * @param {string} msg - Texto a anunciar.
+ * @param {'polite'|'assertive'} urgency
+ */
+function announce(msg, urgency = "polite") {
+  const el = document.getElementById("a11y-announcer");
+  if (!el) return;
+  // Forzar re-anuncio limpiando primero
+  el.setAttribute("aria-live", urgency);
+  el.textContent = "";
+  // Pequeño delay para que el AT detecte el cambio
+  requestAnimationFrame(() => { el.textContent = msg; });
+}
+
+// Referencia al elemento que abrió el modal (para retornar foco al cerrar)
+let modalOpenerRef = null;
+
 function setButtonLoading(button, loading, text = "Cargando...") {
   if (!button) return;
   if (loading) {
@@ -107,13 +125,17 @@ function showResultBanner(match) {
   document.querySelector(".result-upload-toast")?.remove();
   const toast = document.createElement("div");
   toast.className = "result-upload-toast";
-  toast.innerHTML = `<button class="result-upload-toast-close" aria-label="Cerrar aviso">×</button><div><strong>Nuevo resultado cargado</strong><p>Se subió el resultado del partido: <span>${esc(getMatchName(match))}</span></p></div>`;
+  toast.setAttribute("role", "status");
+  toast.setAttribute("aria-live", "polite");
+  toast.innerHTML = `<button class="result-upload-toast-close" aria-label="Cerrar aviso de nuevo resultado">×</button><div><strong>Nuevo resultado cargado</strong><p>Se subió el resultado del partido: <span>${esc(getMatchName(match))}</span></p></div>`;
   document.body.appendChild(toast);
   toast
     .querySelector("button")
     ?.addEventListener("click", () => toast.remove());
   setTimeout(() => toast.classList.add("visible"), 20);
   setTimeout(() => toast.remove(), 12000);
+  // Anunciar via live region para screen readers
+  announce(`Nuevo resultado: ${getMatchName(match)}`, "polite");
 }
 
 function notifyNewUploadedResults(newMatches) {
@@ -163,6 +185,22 @@ function renderSoon() {
 function startRealtimeListeners() {
   if (realtimeStarted) return;
   realtimeStarted = true;
+
+  // Indicador de conexión online/offline
+  const banner = document.getElementById("connection-banner");
+  function updateConnectionBanner(online) {
+    if (!banner) return;
+    if (online) {
+      banner.classList.remove("visible");
+    } else {
+      banner.classList.add("visible");
+      announce("Sin conexión a internet. Mostrando datos guardados.", "assertive");
+    }
+  }
+  window.addEventListener("online", () => updateConnectionBanner(true));
+  window.addEventListener("offline", () => updateConnectionBanner(false));
+  updateConnectionBanner(navigator.onLine);
+
   onSnapshot(query(collection(db, "matches"), orderBy("order")), (snap) => {
     const nextMatches = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     notifyNewUploadedResults(nextMatches);
@@ -630,35 +668,46 @@ function scorePrediction(pred, m) {
 function renderShell() {
   $("app").innerHTML = `
   <header class="mobile-topbar">
-    <a class="mobile-logo-link" href="app.html" aria-label="Inicio">
-      <img src="img/logo_penca.png" alt="Mundial 2026">
+    <a class="mobile-logo-link" href="app.html" aria-label="Penca Mundial 2026 — Inicio">
+      <img src="img/logo_penca.png" alt="">
     </a>
-    <button class="mobile-menu-toggle" type="button" onclick="toggleMobileMenu()" aria-label="Abrir menú" aria-expanded="false">
-      <span></span><span></span><span></span>
+    <button class="mobile-menu-toggle" type="button" onclick="toggleMobileMenu()" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="mobileSidebar">
+      <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
     </button>
   </header>
 
-  <button class="mobile-menu-overlay" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú"></button>
+  <button class="mobile-menu-overlay" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú" tabindex="-1"></button>
 
-  <aside class="sidebar" id="mobileSidebar">
+  <aside class="sidebar" id="mobileSidebar" aria-label="Barra lateral de navegación">
     <div class="mobile-sidebar-head">
-      <div class="logo logo-large"><div class="logo-icon logo-image"><img src="img/logo_penca.png" alt="Mundial 2026"></div></div>
-      <button class="mobile-sidebar-close" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú">×</button>
+      <div class="logo logo-large"><div class="logo-icon logo-image"><img src="img/logo_penca.png" alt=""></div></div>
+      <button class="mobile-sidebar-close" type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú de navegación">×</button>
     </div>
-    <nav class="menu">
-      <button class="active" onclick="showSection('fixture', this)">⚽ Fixture</button>
-      <button onclick="showSection('ranking', this)">🏆 Ranking</button>
-      <button onclick="showSection('reglas', this)">📘 Reglas</button>
-      <button onclick="showSection('perfil', this)">👤 Perfil</button>
-      ${isAdmin() ? `<button onclick="showSection('admin', this)">Admin resultados</button><button onclick="showSection('usuarios', this)">Gestión usuarios</button>` : ""}
+    <nav class="menu" aria-label="Navegación principal">
+      <button type="button" class="active" onclick="showSection('fixture', this)" aria-current="page">⚽ Fixture</button>
+      <button type="button" onclick="showSection('ranking', this)">🏆 Ranking</button>
+      <button type="button" onclick="showSection('reglas', this)">📘 Reglas</button>
+      <button type="button" onclick="showSection('perfil', this)">👤 Perfil</button>
+      ${isAdmin() ? `<button type="button" onclick="showSection('admin', this)">⚙️ Admin resultados</button><button type="button" onclick="showSection('usuarios', this)">👥 Gestión usuarios</button>` : ""}
     </nav>
-    <div class="credits">Desarrollado por Ezequiel Costa<br>3.º año de Profesorado de Informática<br>Ingeniería de Software</div>
+    <div class="credits" aria-hidden="true">Desarrollado por Ezequiel Costa<br>3.º año de Profesorado de Informática<br>Ingeniería de Software</div>
   </aside>
-  <main class="main">
-    <section id="fixture" class="section active"></section><section id="ranking" class="section"></section><section id="reglas" class="section"></section><section id="perfil" class="section"></section>${isAdmin() ? `<section id="admin" class="section"></section><section id="usuarios" class="section"></section>` : ""}
+  <main class="main" id="main-content" tabindex="-1">
+    <section id="fixture" class="section active" aria-label="Fixture de partidos"></section>
+    <section id="ranking" class="section" aria-label="Ranking de participantes"></section>
+    <section id="reglas" class="section" aria-label="Reglas de la penca"></section>
+    <section id="perfil" class="section" aria-label="Tu perfil"></section>
+    ${isAdmin() ? `<section id="admin" class="section" aria-label="Administración de resultados"></section><section id="usuarios" class="section" aria-label="Gestión de usuarios"></section>` : ""}
   </main>
-  <aside class="right-panel" id="rightPanel"></aside>
-  <div id="predictionModal" class="modal"></div>`;
+  <aside class="right-panel" id="rightPanel" aria-label="Resumen de tu posición"></aside>
+  <div
+    id="predictionModal"
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="predictionModalTitle"
+    aria-describedby="predictionModalDesc">
+  </div>`;
 }
 
 function renderFixture() {
@@ -680,11 +729,46 @@ function renderMatchCard(m) {
   const pr = userPrediction(m.id);
   const assigned = isMatchAssigned(m);
   const closed = klass === "closed" || klass === "loaded" || !assigned;
+  const matchLabel = `${esc(teamName(m.teamAId))} vs ${esc(teamName(m.teamBId))}`;
   const resultHtml =
     m.status === "played"
-      ? `<strong>${m.goalsA} - ${m.goalsB}</strong><span>  Resultado</span>`
-      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span>  Tu pronóstico</span>`;
-  return `<article id="match-${m.id}" class="match-card" data-id="${m.id}"><div class="match-info"><span class="group-label">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span><div class="teams"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div><span class="status-badge ${klass}">${label}</span></div><div class="time">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</div><div class="match-result-side ${m.status === "played" ? "loaded" : ""}">${resultHtml}</div>${isAdmin() ? `<span class="status">Admin</span>` : `<button class="action-btn ${closed ? "closed" : ""}" ${closed ? "disabled" : ""} onclick="openPrediction('${m.id}')">${!assigned ? "Pendiente" : matchNotYetOpen(m) ? "Próximamente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}</button>`}</article>`;
+      ? `<strong aria-label="Resultado ${m.goalsA} a ${m.goalsB}">${m.goalsA} - ${m.goalsB}</strong><span aria-hidden="true">  Resultado</span>`
+      : `<strong>${pr ? `${pr.goalsA} - ${pr.goalsB}` : "-"}</strong><span aria-hidden="true">  Tu pronóstico</span>`;
+  const btnLabel = !assigned
+    ? `Partido pendiente de equipos`
+    : matchNotYetOpen(m)
+    ? `Próximamente disponible: ${matchLabel}`
+    : closed
+    ? `Cerrado: ${matchLabel}`
+    : pr
+    ? `Editar pronóstico: ${matchLabel}`
+    : `Predecir resultado: ${matchLabel}`;
+  return `<article
+    id="match-${m.id}"
+    class="match-card"
+    data-id="${m.id}"
+    aria-label="Partido ${matchLabel} — ${label}">
+    <div class="match-info">
+      <span class="group-label" aria-hidden="true">${esc(phaseName(m.phase))}${m.group ? " · Grupo " + esc(m.group) : ""}</span>
+      <div class="teams" aria-hidden="true"><span>${esc(teamName(m.teamAId))}</span><span class="vs">VS</span><span>${esc(teamName(m.teamBId))}</span></div>
+      <span class="status-badge ${klass}" aria-label="Estado: ${label}">${label}</span>
+    </div>
+    <div class="time" aria-label="Horario: ${esc(matchDateLine(m))}${matchVenueLine(m) ? `, ${esc(matchVenueLine(m))}` : ""}"><span aria-hidden="true">${esc(matchDateLine(m))}${matchVenueLine(m) ? `<br>${esc(matchVenueLine(m))}` : ""}</span></div>
+    <div class="match-result-side ${m.status === "played" ? "loaded" : ""}">
+      <span class="sr-only">${m.status === "played" ? "Resultado: " : "Tu pronóstico: "}</span>
+      ${resultHtml}
+    </div>
+    ${isAdmin()
+      ? `<span class="status" aria-hidden="true">Admin</span>`
+      : `<button
+          class="action-btn ${closed ? "closed" : ""}"
+          ${closed ? 'disabled aria-disabled="true"' : ""}
+          onclick="openPrediction('${m.id}')"
+          aria-label="${btnLabel}"
+          data-match-id="${m.id}">
+          ${!assigned ? "Pendiente" : matchNotYetOpen(m) ? "Próximamente" : closed ? "Cerrado" : pr ? "Editar" : "Predecir"}
+        </button>`}
+  </article>`;
 }
 function phaseName(id) {
   return phases.find((f) => f.id === id)?.name || id;
@@ -1270,16 +1354,74 @@ function openPrediction(id) {
     return alert(predictionOpenLabel(selectedMatch));
   if (matchClosed(selectedMatch)) return alert("Este partido ya está cerrado.");
 
+  // Guardar referencia al elemento que disparó la apertura (para retornar foco)
+  modalOpenerRef = document.activeElement;
+
   const previous = userPrediction(selectedMatch.id);
   const previousGoalsA = previous?.goalsA ?? 0;
   const previousGoalsB = previous?.goalsB ?? 0;
   const previousPenalty = previous?.penaltyWinnerId || "";
+  const matchTitle = `${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}`;
 
   $("predictionModal").innerHTML =
-    `<div class="modal-content"><h2>${esc(teamName(selectedMatch.teamAId))} vs ${esc(teamName(selectedMatch.teamBId))}</h2><p>Ingresá tu pronóstico.</p><form id="predictionForm"><div class="score-inputs"><div class="team-input"><label>${esc(teamName(selectedMatch.teamAId))}</label><input id="predA" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsA}"></div><span class="vs">VS</span><div class="team-input"><label>${esc(teamName(selectedMatch.teamBId))}</label><input id="predB" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsB}"></div></div>${phases.find((f) => f.id === selectedMatch.phase)?.knockout ? `<div class="penalty-box active"><label>Ganador por penales</label><select id="predPenalty">${matchTeamOptionsSorted(selectedMatch, previousPenalty, true)}</select></div>` : ""}<div class="modal-actions"><button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button><button class="save-btn">Guardar</button></div></form></div>`;
-  $("predictionModal").classList.add("active");
+    `<div class="modal-content">
+      <h2 id="predictionModalTitle">${matchTitle}</h2>
+      <p id="predictionModalDesc">Ingresá tu pronóstico para este partido.</p>
+      <form id="predictionForm" novalidate>
+        <div class="score-inputs">
+          <div class="team-input">
+            <label for="predA">${esc(teamName(selectedMatch.teamAId))}</label>
+            <input id="predA" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsA}" aria-label="Goles ${esc(teamName(selectedMatch.teamAId))}" autocomplete="off">
+          </div>
+          <span class="vs" aria-hidden="true">VS</span>
+          <div class="team-input">
+            <label for="predB">${esc(teamName(selectedMatch.teamBId))}</label>
+            <input id="predB" class="goal-input" type="text" maxlength="2" inputmode="numeric" pattern="[0-9]*" value="${previousGoalsB}" aria-label="Goles ${esc(teamName(selectedMatch.teamBId))}" autocomplete="off">
+          </div>
+        </div>
+        ${phases.find((f) => f.id === selectedMatch.phase)?.knockout
+          ? `<div class="penalty-box active">
+               <label for="predPenalty">Ganador por penales</label>
+               <select id="predPenalty">${matchTeamOptionsSorted(selectedMatch, previousPenalty, true)}</select>
+             </div>`
+          : ""}
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" id="modalCancelBtn" onclick="closeModal()">Cancelar</button>
+          <button class="save-btn" id="modalSaveBtn">Guardar</button>
+        </div>
+      </form>
+    </div>`;
+
+  const modal = $("predictionModal");
+  modal.classList.add("active");
+  document.body.classList.add("modal-open");
+
   $("predictionForm").addEventListener("submit", savePrediction);
-  attachGoalValidation($("predictionModal"));
+  attachGoalValidation(modal);
+
+  // Mover foco al primer input del modal
+  setTimeout(() => $("predA")?.focus(), 50);
+
+  // Focus trap dentro del modal
+  modal._trapHandler = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusable = modal.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
+  };
+  modal.addEventListener("keydown", modal._trapHandler);
 }
 async function savePrediction(e) {
   e.preventDefault();
@@ -1401,8 +1543,12 @@ window.showSection = (id, btn) => {
   $(id)?.classList.add("active");
   document
     .querySelectorAll(".menu button")
-    .forEach((b) => b.classList.remove("active"));
+    .forEach((b) => {
+      b.classList.remove("active");
+      b.removeAttribute("aria-current");
+    });
   btn?.classList.add("active");
+  btn?.setAttribute("aria-current", "page");
   closeMobileMenu();
 
   /*
@@ -1412,6 +1558,14 @@ window.showSection = (id, btn) => {
   */
   clearPendingEditScrollSnapshot();
   forceScrollTop();
+
+  // Mover foco al h1 de la sección para que SR anuncie el contexto nuevo
+  const section = $(id);
+  const heading = section?.querySelector("h1");
+  if (heading) {
+    heading.setAttribute("tabindex", "-1");
+    heading.focus();
+  }
 };
 window.showFixturePhase = (id, btn) => {
   const parent = btn.closest(".section");
@@ -1438,7 +1592,20 @@ window.showHistoryDetail = (id) => {
     .forEach((x) => x.classList.remove("active"));
   if (id) $(id)?.classList.add("active");
 };
-window.closeModal = () => $("predictionModal").classList.remove("active");
+window.closeModal = () => {
+  const modal = $("predictionModal");
+  modal.classList.remove("active");
+  document.body.classList.remove("modal-open");
+  if (modal._trapHandler) {
+    modal.removeEventListener("keydown", modal._trapHandler);
+    delete modal._trapHandler;
+  }
+  // Retornar foco al elemento que abrió el modal
+  if (modalOpenerRef && typeof modalOpenerRef.focus === "function") {
+    modalOpenerRef.focus();
+    modalOpenerRef = null;
+  }
+};
 window.openPrediction = openPrediction;
 window.logout = async () => {
   showPageLoader("Cerrando sesión...");
