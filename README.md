@@ -35,7 +35,7 @@ La app está construida como una SPA (Single Page Application) vanilla con HTML,
 | Evento | Puntos |
 |---|---|
 | Resultado exacto (marcador exacto) | +3 |
-| Ganador/empate correcto (resultado parcial) | +2 |
+| Ganador correcto (resultado parcial) | +2 |
 | Empate correcto (sin importar el marcador) | +1 |
 | Penales acertados (en partidos que llegan a penales) | +1 |
 | Campeón acertado | +10 |
