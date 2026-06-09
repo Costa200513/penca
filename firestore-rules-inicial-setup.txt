@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    // Reglas temporales para ejecutar setup.html una sola vez.
+    // Permiten que cualquier usuario autenticado cargue equipos, fases, partidos y configuración inicial.
+    match /teams/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /phases/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /matches/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /settings/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /predictions/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /champions/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /adminLogs/{docId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

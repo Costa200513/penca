@@ -1,0 +1,240 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function emailVerified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    function signedInWithGoogle() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == "google.com";
+    }
+
+    function trustedVerifiedIdentity() {
+      return emailVerified() || signedInWithGoogle();
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDocExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return trustedVerifiedIdentity()
+        && userDocExists()
+        && currentUserDoc().data.active == true;
+    }
+
+    function isAdmin() {
+      return trustedVerifiedIdentity()
+        && userDocExists()
+        && currentUserDoc().data.role == "admin"
+        && currentUserDoc().data.active == true;
+    }
+
+    function unchangedUserIdentityFields() {
+      return request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.active == resource.data.active
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.participantType == resource.data.participantType
+        && request.resource.data.specialty == resource.data.specialty
+        && request.resource.data.year == resource.data.year;
+    }
+
+    function unchangedAdminProtectedUserFields() {
+      return request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function validGoal(value) {
+      return value is int && value >= 0 && value <= 50;
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if trustedVerifiedIdentity()
+        && request.resource.data.keys().hasOnly(["uid", "createdAt"])
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /pendingUsernames/{username} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(["uid", "createdAt"])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow update: if false;
+    }
+
+    match /pendingUsers/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          "uid", "username", "fullName", "email", "participantType",
+          "specialty", "year", "createdAt"
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.username is string
+        && request.resource.data.fullName is string
+        && request.resource.data.email is string
+        && request.resource.data.participantType is string
+        && request.resource.data.specialty is string
+        && request.resource.data.year is string;
+      allow update: if false;
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+
+      allow create: if trustedVerifiedIdentity()
+        && isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          "uid", "username", "fullName", "email", "participantType",
+          "specialty", "year", "role", "active", "championId",
+          "championName", "createdAt", "activatedAt"
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.username is string
+        && request.resource.data.fullName is string
+        && request.resource.data.participantType is string
+        && request.resource.data.specialty is string
+        && request.resource.data.year is string
+        && request.resource.data.role == "user"
+        && request.resource.data.active == true
+        && request.resource.data.championId == ""
+        && request.resource.data.championName == "";
+
+      allow update: if activeUser()
+        && isSelf(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "fullName", "championId", "championName", "updatedAt"
+        ])
+        && unchangedUserIdentityFields()
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            "championId", "championName"
+          ])
+          || resource.data.championId == ""
+          || resource.data.championId == null
+        );
+
+      allow update: if isAdmin()
+        && unchangedAdminProtectedUserFields();
+
+      allow delete: if false;
+    }
+
+    match /teams/{docId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /phases/{docId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /matches/{docId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /leaderboards/{docId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /predictions/{predictionId} {
+      allow read: if activeUser()
+        && (isAdmin() || resource.data.uid == request.auth.uid);
+
+      allow create: if activeUser()
+        && request.resource.data.keys().hasOnly([
+          "uid", "matchId", "goalsA", "goalsB", "penaltyWinnerId",
+          "createdAt", "updatedAt"
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.matchId is string
+        && predictionId == request.auth.uid + "_" + request.resource.data.matchId
+        && validGoal(request.resource.data.goalsA)
+        && validGoal(request.resource.data.goalsB)
+        && (
+          !("penaltyWinnerId" in request.resource.data)
+          || request.resource.data.penaltyWinnerId is string
+        );
+
+      allow update: if activeUser()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.matchId == resource.data.matchId
+        && request.resource.data.keys().hasOnly([
+          "uid", "matchId", "goalsA", "goalsB", "penaltyWinnerId",
+          "createdAt", "updatedAt"
+        ])
+        && validGoal(request.resource.data.goalsA)
+        && validGoal(request.resource.data.goalsB)
+        && (
+          !("penaltyWinnerId" in request.resource.data)
+          || request.resource.data.penaltyWinnerId is string
+        );
+
+      allow delete: if false;
+    }
+
+    match /champions/{uid} {
+      allow read: if isAdmin() || (activeUser() && isSelf(uid));
+      allow create: if activeUser()
+        && isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          "uid", "championId", "championName", "locked", "createdAt"
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.championId is string
+        && request.resource.data.championName is string
+        && request.resource.data.locked == true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /adminLogs/{docId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          "action", "uid", "email", "details", "createdAt"
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

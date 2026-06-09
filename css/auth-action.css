@@ -1,0 +1,244 @@
+/* =========================
+   AUTH ACTION PAGE
+   Verificación de correo y recuperación de contraseña
+========================= */
+
+.auth-action-body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(22, 199, 132, 0.14),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(250, 204, 21, 0.1),
+      transparent 34%
+    ),
+    #0b1118;
+  color: #ffffff;
+}
+
+.auth-action-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.auth-action-card {
+  width: min(460px, 100%);
+  background: #1f2937;
+  border: 1px solid #334155;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+.auth-action-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.auth-action-logo img {
+  width: 124px;
+  height: 124px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.auth-action-label {
+  display: inline-block;
+  color: #16c784;
+  border: 1px solid rgba(22, 199, 132, 0.45);
+  background: rgba(22, 199, 132, 0.1);
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+}
+
+.auth-action-panel h1 {
+  font-size: 30px;
+  line-height: 1.1;
+  margin: 0 0 14px;
+}
+
+.auth-action-panel p {
+  color: #d1d5db;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.auth-action-muted {
+  color: #9ca3af !important;
+}
+
+.auth-action-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.auth-action-form label {
+  color: #d1d5db;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.auth-action-form input {
+  width: 100%;
+  margin-top: 8px;
+  background: #0b1118;
+  border: 1px solid #334155;
+  color: #ffffff;
+  padding: 13px;
+  border-radius: 10px;
+  outline: none;
+}
+
+.auth-action-form input:focus {
+  border-color: #16c784;
+  box-shadow: 0 0 0 3px rgba(22, 199, 132, 0.12);
+}
+
+.auth-action-form small {
+  display: block;
+  margin-top: 7px;
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.auth-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #16c784;
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.auth-action-btn:hover {
+  background: #0fa66b;
+}
+
+.auth-action-link {
+  display: inline-block;
+  margin-top: 18px;
+  color: #16c784;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-action-message {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  display: none;
+}
+
+.auth-action-message.success {
+  display: block;
+  color: #bbf7d0;
+  background: rgba(22, 199, 132, 0.12);
+  border: 1px solid rgba(22, 199, 132, 0.35);
+}
+
+.auth-action-message.error {
+  display: block;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.auth-action-loader {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 17, 24, 0.96);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition:
+    opacity 0.35s ease,
+    visibility 0.35s ease;
+}
+
+.auth-action-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-action-loader-card {
+  min-width: 260px;
+  background: #1f2937;
+  border: 1px solid #334155;
+  border-radius: 24px;
+  padding: 30px;
+  text-align: center;
+}
+
+.auth-action-loader-card img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 50%;
+  margin-bottom: 14px;
+}
+
+.auth-action-loader-card h2 {
+  margin: 0 0 8px;
+}
+
+.auth-action-loader-card p {
+  margin: 0;
+  color: #9ca3af;
+}
+
+@media (max-width: 520px) {
+  .auth-action-wrapper {
+    padding: 16px;
+  }
+
+  .auth-action-card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .auth-action-logo img {
+    width: 104px;
+    height: 104px;
+  }
+
+  .auth-action-panel h1 {
+    font-size: 25px;
+  }
+}
+
+.auth-action-btn.is-loading,
+.auth-action-btn:disabled {
+  opacity: 0.75;
+  cursor: wait;
+  pointer-events: none;
+}

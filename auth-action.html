@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acción de cuenta | Mundial 2026</title>
+  <link rel="icon" type="image/png" href="img/logo_penca.png" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth-action.css" />
+</head>
+<body class="auth-action-body">
+  <div id="authActionLoader" class="auth-action-loader">
+    <div class="auth-action-loader-card">
+      <img src="img/logo_penca.png" alt="Logo Penca Mundial 2026" />
+      <h2>Mundial 2026</h2>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <main class="auth-action-wrapper">
+    <section class="auth-action-card">
+      <div class="auth-action-logo">
+        <img src="img/logo_penca.png" alt="Logo Penca Mundial 2026" />
+      </div>
+
+      <div id="verifyEmailBox" class="auth-action-panel hidden">
+        <span class="auth-action-label">Verificación de correo</span>
+        <h1 id="verifyTitle">Verificando...</h1>
+        <p id="verifyMessage">Estamos confirmando tu dirección de correo electrónico.</p>
+        <a class="auth-action-btn" href="login.html">Ir a iniciar sesión</a>
+      </div>
+
+      <div id="resetPasswordBox" class="auth-action-panel hidden">
+        <span class="auth-action-label">Recuperación de contraseña</span>
+        <h1>Crear nueva contraseña</h1>
+        <p id="resetEmailText" class="auth-action-muted">Verificando solicitud...</p>
+
+        <form id="resetPasswordForm" class="auth-action-form hidden">
+          <label>
+            Nueva contraseña
+            <input type="password" id="newPassword" minlength="6" required />
+            <small>Debe tener al menos 6 caracteres.</small>
+          </label>
+
+          <label>
+            Repetir contraseña
+            <input type="password" id="repeatPassword" minlength="6" required />
+          </label>
+
+          <button class="auth-action-btn" type="submit">Cambiar contraseña</button>
+        </form>
+
+        <p id="resetPasswordMessage" class="auth-action-message"></p>
+        <a class="auth-action-link" href="login.html">Volver al login</a>
+      </div>
+
+      <div id="unknownActionBox" class="auth-action-panel hidden">
+        <span class="auth-action-label">Acción no válida</span>
+        <h1>No pudimos procesar el enlace</h1>
+        <p>El enlace puede estar vencido, incompleto o ya fue utilizado.</p>
+        <a class="auth-action-btn" href="login.html">Volver al login</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/auth-action.js"></script>
+</body>
+</html>
