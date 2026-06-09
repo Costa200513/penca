@@ -17,6 +17,7 @@ import {
   writeBatch,
   serverTimestamp,
   query,
+  where,
   orderBy,
   onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -33,6 +34,7 @@ let matches = [];
 let predictions = [];
 let users = [];
 let settings = { predictionsCloseMinutes: 30, realChampionId: "" };
+let leaderboardCache = { usersRank: [], specialtyRank: [] };
 let selectedMatch = null;
 let realtimeStarted = false;
 let renderTimer = null;
@@ -211,18 +213,43 @@ function startRealtimeListeners() {
     matches = nextMatches;
     renderSoon();
   });
-  onSnapshot(collection(db, "predictions"), (snap) => {
-    predictions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    renderSoon();
-  });
-  onSnapshot(collection(db, "users"), (snap) => {
-    users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const updated = users.find((u) => u.uid === currentUser?.uid);
-    if (updated) userData = updated;
-    renderSoon();
-  });
+
+  // Suscripción condicional para ahorrar miles de lecturas O(N*M)
+  if (isAdmin()) {
+    onSnapshot(collection(db, "predictions"), (snap) => {
+      predictions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderSoon();
+    });
+    onSnapshot(collection(db, "users"), (snap) => {
+      users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const updated = users.find((u) => u.uid === currentUser?.uid);
+      if (updated) userData = updated;
+      renderSoon();
+    });
+  } else {
+    // Los usuarios normales solo descargan SUS propias predicciones
+    onSnapshot(query(collection(db, "predictions"), where("uid", "==", currentUser.uid)), (snap) => {
+      predictions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderSoon();
+    });
+    // Y solo su propio documento de usuario (no toda la base)
+    onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
+      if (snap.exists()) {
+        userData = { id: snap.id, ...snap.data() };
+        // Simular array 'users' con 1 solo elemento para compatibilidad
+        users = [userData];
+      }
+      renderSoon();
+    });
+  }
+
   onSnapshot(doc(db, "settings", "tournament"), (snap) => {
     if (snap.exists()) settings = { ...settings, ...snap.data() };
+    renderSoon();
+  });
+
+  onSnapshot(doc(db, "settings", "leaderboard"), (snap) => {
+    if (snap.exists()) leaderboardCache = snap.data();
     renderSoon();
   });
 }
@@ -775,76 +802,11 @@ function phaseName(id) {
 }
 
 function rankingData() {
-  return users
-    .filter((u) => u.active !== false && u.role !== "admin")
-    .map((u) => {
-      let exact = 0,
-        partial = 0,
-        draw = 0,
-        penalties = 0,
-        incorrect = 0,
-        points = 0;
-      predictions
-        .filter((p) => p.uid === u.uid)
-        .forEach((p) => {
-          const m = matches.find((x) => x.id === p.matchId);
-          const s = scorePrediction(p, m || {});
-          exact += s.exact;
-          partial += s.partial;
-          draw += s.draw;
-          penalties += s.penalties;
-          incorrect += s.incorrect;
-          points += s.points;
-        });
-      if (settings.realChampionId && u.championId === settings.realChampionId)
-        points += 10;
-      return {
-        ...u,
-        exact,
-        partial,
-        draw,
-        penalties,
-        incorrect,
-        points,
-        aciertos: exact + partial + draw,
-      };
-    })
-    .sort((a, b) => b.points - a.points || b.exact - a.exact)
-    .map((u, i) => ({ ...u, position: i + 1 }));
+  return leaderboardCache.usersRank || [];
 }
 
 function specialtyRankingData() {
-  const bySpecialty = new Map();
-  rankingData().forEach((u) => {
-    const key = u.specialty || "Sin especialidad";
-    if (!bySpecialty.has(key)) {
-      bySpecialty.set(key, {
-        username: key,
-        specialty: key,
-        fullName: key,
-        points: 0,
-        aciertos: 0,
-        exact: 0,
-        partial: 0,
-        draw: 0,
-        penalties: 0,
-        incorrect: 0,
-        users: 0,
-      });
-    }
-    const row = bySpecialty.get(key);
-    row.points += u.points;
-    row.aciertos += u.aciertos;
-    row.exact += u.exact;
-    row.partial += u.partial;
-    row.draw += u.draw;
-    row.penalties += u.penalties;
-    row.incorrect += u.incorrect;
-    row.users += 1;
-  });
-  return [...bySpecialty.values()]
-    .sort((a, b) => b.points - a.points || b.exact - a.exact)
-    .map((r, i) => ({ ...r, position: i + 1 }));
+  return leaderboardCache.specialtyRank || [];
 }
 
 function renderRankingBlock(title, description, data, mode = "user") {

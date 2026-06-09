@@ -1,0 +1,30 @@
+name: Penca Auto-Sync & Leaderboard
+
+on:
+  schedule:
+    # Se ejecuta cada 30 minutos. GitHub Actions es gratis.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Permite ejecutarlo a mano desde la interfaz de GitHub
+
+jobs:
+  sync-firebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v3
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: ./scripts
+        run: npm ci || npm install
+
+      - name: Ejecutar script de sincronización
+        working-directory: ./scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+        run: node sync.js
