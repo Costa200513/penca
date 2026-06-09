@@ -347,7 +347,9 @@ onAuthStateChanged(auth, async (user) => {
   } catch (error) {
     console.error("Error al cargar la aplicación:", error);
     hidePageLoader();
-    alert("No se pudo cargar la aplicación. Revisá tu conexión.");
+    alert(
+      "No se pudo cargar la aplicación. Revisá tu conexión, las reglas de Firestore o el setup inicial.",
+    );
   }
 });
 
@@ -803,7 +805,10 @@ function renderChampionPromptCard() {
       <select id="fixtureChampionId" required>
         <option value="">Elegí una selección</option>
         ${realTeamsSorted()
-          .map((team) => `<option value="${esc(team.id)}">${esc(team.name)}</option>`)
+          .map(
+            (team) =>
+              `<option value="${esc(team.id)}">${esc(team.name)}</option>`,
+          )
           .join("")}
       </select>
       <button class="save-btn">Guardar campeón</button>
@@ -1400,7 +1405,7 @@ function renderProfile() {
   $("profileChampionForm")?.addEventListener("submit", saveChampionProfile);
 }
 
-async async function saveChampionSelection(championId) {
+async function saveChampionSelection(championId) {
   const championName = teamName(championId);
   const batch = writeBatch(db);
 
@@ -1433,7 +1438,11 @@ async async function saveChampionSelection(championId) {
   return championName;
 }
 
-async function handleChampionSelection(championId, messageElement, options = {}) {
+async function handleChampionSelection(
+  championId,
+  messageElement,
+  options = {},
+) {
   const msg = messageElement;
 
   if (!championId) {
@@ -1490,7 +1499,10 @@ async function handleChampionSelection(championId, messageElement, options = {})
 
 function saveChampionProfile(e) {
   e.preventDefault();
-  handleChampionSelection($("profileChampionId")?.value || "", $("championMsg"));
+  handleChampionSelection(
+    $("profileChampionId")?.value || "",
+    $("championMsg"),
+  );
 }
 
 function saveChampionFromFixture(e) {
