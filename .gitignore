@@ -16,7 +16,3 @@ android-app/android/**/*.properties
 android-app/*.apk
 android-app/pencaAndroid/
 dist/
-
-# Cloud Functions — nunca commitear la API key
-functions/.env
-functions/node_modules/

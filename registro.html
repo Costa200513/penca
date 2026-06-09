@@ -3,80 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Registro | Penca Mundial 2026 CeRP Litoral Norte</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/a11y.css">
-  <link rel="icon" type="image/png" href="img/logo_penca.png">
+  <title>Registro | Penca Mundial</title>
+  <link rel="stylesheet" href="css/style.css"><link rel="icon" type="image/png" href="img/logo_penca.png">
 </head>
-<body class="auth-body">
-  <a href="#registerForm" class="skip-to-content">Saltar al formulario de registro</a>
+<body class="auth-body"><div id="pageLoader" class="page-loader"><div class="loader-card"><img class="loader-logo-img" src="img/logo_penca.png" alt="Mundial 2026"><strong>Mundial 2026</strong><span>Cargando...</span></div></div>
+  <main class="auth-wrapper">
+    <section class="auth-card auth-card-wide">
+      <h1>Crear cuenta</h1>
+      <p class="auth-subtitle">Registrate con correo y usuario. La contraseña debe tener mínimo 6 caracteres. El campeón se elige luego desde el perfil.</p>
 
-  <div id="pageLoader" class="page-loader" role="status" aria-label="Cargando">
-    <div class="loader-card">
-      <img class="loader-logo-img" src="img/logo_penca.png" alt="Mundial 2026">
-      <strong>Mundial 2026</strong><span>Cargando...</span>
-    </div>
-  </div>
-
-  <main class="auth-wrapper" id="main-content">
-    <section class="auth-card auth-card-wide" aria-labelledby="registerTitle">
-      <h1 id="registerTitle">Crear cuenta</h1>
-      <p class="auth-subtitle">
-        Registrate con correo y usuario. La contraseña debe tener mínimo 6 caracteres.
-        El campeón se elige luego desde el perfil.
-      </p>
-
-      <form id="registerForm" class="auth-form" aria-describedby="registerMessage" novalidate>
+      <form id="registerForm" class="auth-form">
         <div class="auth-grid">
           <div class="auth-form-group">
-            <label for="username">Usuario</label>
-            <input
-              id="username"
-              type="text"
-              required
-              aria-required="true"
-              autocomplete="username"
-              aria-describedby="usernameHelp">
-            <small id="usernameHelp" class="input-help">Solo letras, números, punto y guion bajo.</small>
+            <label>Usuario</label>
+            <input id="username" type="text" required>
+            <small class="input-help">Solo letras, números, punto y guion bajo.</small>
           </div>
 
           <div class="auth-form-group">
-            <label for="fullName">Nombre completo</label>
-            <input
-              id="fullName"
-              type="text"
-              required
-              aria-required="true"
-              autocomplete="name">
+            <label>Nombre completo</label>
+            <input id="fullName" type="text" required>
           </div>
 
           <div class="auth-form-group">
-            <label for="email">Correo electrónico</label>
-            <input
-              id="email"
-              type="email"
-              required
-              aria-required="true"
-              autocomplete="email"
-              inputmode="email">
+            <label>Correo electrónico</label>
+            <input id="email" type="email" required>
           </div>
 
           <div class="auth-form-group">
-            <label for="password">Contraseña</label>
-            <input
-              id="password"
-              type="password"
-              minlength="6"
-              required
-              aria-required="true"
-              autocomplete="new-password"
-              aria-describedby="passwordHelp">
-            <small id="passwordHelp" class="input-help">Mínimo 6 caracteres.</small>
+            <label>Contraseña</label>
+            <input id="password" type="password" minlength="6" required>
+            <small class="input-help">Mínimo 6 caracteres.</small>
           </div>
 
           <div class="auth-form-group">
-            <label for="participantType">Tipo de participante</label>
-            <select id="participantType" required aria-required="true">
+            <label>Tipo de participante</label>
+            <select id="participantType" required>
               <option value="">Seleccionar</option>
               <option value="student">Estudiante</option>
               <option value="teacher">Docente</option>
@@ -84,8 +46,8 @@
           </div>
 
           <div class="auth-form-group">
-            <label for="specialty">Especialidad</label>
-            <select id="specialty" required aria-required="true">
+            <label>Especialidad</label>
+            <select id="specialty" required>
               <option value="">Seleccionar especialidad</option>
               <option value="Ciencias Biológicas">Ciencias Biológicas</option>
               <option value="Ciencias Geográficas">Ciencias Geográficas</option>
@@ -107,8 +69,8 @@
           </div>
 
           <div class="auth-form-group">
-            <label for="year">Año</label>
-            <select id="year" required aria-required="true">
+            <label>Año</label>
+            <select id="year" required>
               <option value="">Seleccionar</option>
               <option value="1">1.º</option>
               <option value="2">2.º</option>
@@ -118,21 +80,13 @@
           </div>
         </div>
 
-        <button class="auth-btn" type="submit">Registrarme</button>
+        <button class="auth-btn">Registrarme</button>
       </form>
 
-      <p
-        id="registerMessage"
-        class="inline-message"
-        role="alert"
-        aria-live="assertive"
-        aria-atomic="true"></p>
-
-      <p class="auth-footer-text">¿Ya tenés cuenta? <a href="login.html">Iniciar sesión</a></p>
-      <p class="auth-footer-text"><a href="index.html">Volver al inicio</a></p>
+      <p id="registerMessage" class="inline-message"></p>
+      <p class="auth-footer-text">¿Ya tenés cuenta? <a href="login.html">Iniciar sesión</a></p><p class="auth-footer-text"><a href="index.html">Volver al inicio</a></p>
     </section>
   </main>
   <script type="module" src="js/auth.js"></script>
-  <script src="js/page-loader.js"></script>
-</body>
+<script src="js/page-loader.js"></script></body>
 </html>

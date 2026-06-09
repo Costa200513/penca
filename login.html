@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Login | Penca Mundial 2026 CeRP Litoral Norte</title>
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/a11y.css" />
     <link rel="icon" type="image/png" href="img/logo_penca.png" />
   </head>
   <body class="auth-body">
-    <a href="#loginForm" class="skip-to-content">Saltar al formulario de ingreso</a>
-    <div id="pageLoader" class="page-loader" role="status" aria-label="Cargando aplicación">
+    <div id="pageLoader" class="page-loader">
       <div class="loader-card">
         <img
           class="loader-logo-img"
@@ -19,54 +17,37 @@
         ><span>Cargando...</span>
       </div>
     </div>
-    <main class="auth-wrapper" id="main-content">
-      <section class="auth-card" aria-labelledby="loginTitle">
+    <main class="auth-wrapper">
+      <section class="auth-card">
         <div class="auth-logo">
           <div class="auth-logo-img-wrap">
-            <img src="img/logo_penca.png" alt="" role="presentation" />
+            <img src="img/logo_penca.png" alt="Mundial 2026" />
           </div>
           <div>
-            <h1 id="loginTitle">Mundial 2026</h1>
+            <h2>Mundial 2026</h2>
             <p class="auth-subtitle">Ingresá con tu correo y contraseña.</p>
           </div>
         </div>
-        <form id="loginForm" class="auth-form" aria-describedby="loginMessage" novalidate>
+        <form id="loginForm" class="auth-form">
           <div class="auth-form-group">
-            <label for="loginEmail">Correo electrónico</label>
-            <input
-              id="loginEmail"
-              type="email"
-              required
-              autocomplete="email"
-              inputmode="email"
-              aria-required="true" />
+            <label>Correo electrónico</label
+            ><input id="loginEmail" type="email" required />
           </div>
           <div class="auth-form-group">
-            <label for="loginPassword">Contraseña</label>
-            <input
-              id="loginPassword"
-              type="password"
-              required
-              autocomplete="current-password"
-              aria-required="true" />
+            <label>Contraseña</label
+            ><input id="loginPassword" type="password" required />
           </div>
-          <button class="auth-btn" type="submit">Entrar</button>
+          <button class="auth-btn">Entrar</button>
         </form>
-        <div class="auth-separator"><span aria-hidden="true">o</span></div>
+        <div class="auth-separator"><span>o</span></div>
         <button
           id="googleLoginBtn"
           class="auth-btn google-auth-btn"
-          type="button"
-          aria-label="Entrar con cuenta de Google">
-          <img class="google-icon" src="img/Google.png" alt="" role="presentation" />
+          type="button">
+          <img class="google-icon" src="img/Google.png" alt="Google" />
           <span>Entrar con Google</span>
         </button>
-        <p
-          id="loginMessage"
-          class="inline-message"
-          role="alert"
-          aria-live="assertive"
-          aria-atomic="true"></p>
+        <p id="loginMessage" class="inline-message"></p>
         <p class="auth-footer-text">
           <a href="reset.html">Olvidé mi contraseña</a>
         </p>
@@ -81,20 +62,15 @@
     <script type="module" src="js/auth.js"></script>
     <script src="js/page-loader.js"></script>
 
-    <div
-      id="googleProfileModal"
-      class="modal google-profile-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="googleProfileTitle">
+    <div id="googleProfileModal" class="modal google-profile-modal">
       <div class="modal-content google-profile-content">
-        <h2 id="googleProfileTitle">Completá tu perfil</h2>
+        <h2>Completá tu perfil</h2>
         <p>
           Para entrar con Google, completá estos datos una sola vez. Luego no
           podrás modificarlos desde el perfil.
         </p>
 
-        <form id="googleProfileForm" novalidate>
+        <form id="googleProfileForm">
           <label for="googleProfileUsername">Nombre de usuario</label>
           <input
             id="googleProfileUsername"
@@ -102,18 +78,17 @@
             maxlength="30"
             autocomplete="username"
             placeholder="ejemplo: eze_costa"
-            aria-required="true"
             required />
 
           <label for="googleProfileParticipantType">Tipo de participante</label>
-          <select id="googleProfileParticipantType" required aria-required="true">
+          <select id="googleProfileParticipantType" required>
             <option value="">Seleccioná una opción</option>
             <option value="student">Estudiante</option>
             <option value="teacher">Docente</option>
           </select>
 
           <label for="googleProfileSpecialty">Especialidad</label>
-          <select id="googleProfileSpecialty" required aria-required="true">
+          <select id="googleProfileSpecialty" required>
             <option value="">Seleccioná una especialidad</option>
             <option value="Ciencias Biológicas">Ciencias Biológicas</option>
             <option value="Ciencias Geográficas">Ciencias Geográficas</option>
@@ -134,7 +109,7 @@
           </select>
 
           <label for="googleProfileYear">Año</label>
-          <select id="googleProfileYear" required aria-required="true">
+          <select id="googleProfileYear" required>
             <option value="">Seleccioná una opción</option>
             <option value="1">1.º</option>
             <option value="2">2.º</option>
@@ -150,7 +125,6 @@
             minlength="6"
             autocomplete="new-password"
             placeholder="Mínimo 6 caracteres"
-            aria-required="true"
             required />
 
           <label for="googleProfilePasswordRepeat">Repetir contraseña</label>
@@ -159,7 +133,6 @@
             type="password"
             minlength="6"
             autocomplete="new-password"
-            aria-required="true"
             required />
 
           <p class="google-profile-help">
@@ -167,12 +140,7 @@
             además de Google.
           </p>
 
-          <p
-            id="googleProfileMessage"
-            class="inline-message"
-            role="alert"
-            aria-live="assertive"
-            aria-atomic="true"></p>
+          <p id="googleProfileMessage" class="inline-message"></p>
 
           <div class="modal-actions">
             <button
