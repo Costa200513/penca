@@ -1088,8 +1088,9 @@ button.is-loading {
   font-size: 13px;
 }
 .details-btn {
-  width: 34px;
-  height: 34px;
+  /* WCAG 2.5.5: tap target mínimo 44×44px */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid #16c784;
   background: transparent;
