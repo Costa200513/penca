@@ -232,6 +232,18 @@ function parseGoalValue(value) {
 }
 
 const CHAMPION_DEADLINE = new Date("2026-06-11T16:00:00-03:00");
+function championDeadlineLabel() {
+  return `${CHAMPION_DEADLINE.toLocaleDateString("es-UY", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })} a las ${CHAMPION_DEADLINE.toLocaleTimeString("es-UY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })} UY`;
+}
+
 function championSelectionClosed() {
   return Date.now() >= CHAMPION_DEADLINE.getTime();
 }
@@ -783,23 +795,14 @@ function renderShell() {
 }
 
 function renderChampionPromptCard() {
-  if (isAdmin() || userData?.championId) return "";
-
-  if (championSelectionClosed()) {
-    return `<div class="champion-fixture-card champion-fixture-card-closed">
-      <div>
-        <span class="profile-label">Campeón Mundial 2026</span>
-        <h3>Selección cerrada</h3>
-        <p>La elección de campeón ya no está disponible.</p>
-      </div>
-    </div>`;
-  }
+  if (isAdmin() || userData?.championId || championSelectionClosed()) return "";
 
   return `<div class="champion-fixture-card">
     <div class="champion-fixture-copy">
       <span class="profile-label">Campeón Mundial 2026</span>
       <h3>Elegí tu campeón</h3>
       <p>Seleccioná quién creés que va a ganar el Mundial 2026. Si acertás, sumás <strong>+10 puntos</strong> al final del torneo.</p>
+      <p class="champion-fixture-deadline">Podés elegir hasta el <strong>${esc(championDeadlineLabel())}</strong>.</p>
     </div>
     <form id="fixtureChampionForm" class="champion-fixture-form">
       <select id="fixtureChampionId" required>

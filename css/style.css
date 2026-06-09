@@ -3342,3 +3342,9 @@ button.is-loading {
     padding: 16px;
   }
 }
+
+.champion-fixture-deadline {
+  margin-top: 8px !important;
+  color: #e0f2fe !important;
+  font-size: 0.95rem;
+}
