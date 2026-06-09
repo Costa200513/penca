@@ -11,6 +11,8 @@ android-app/android/**/*.aar
 android-app/android/**/*.txt
 android-app/android/**/*.json
 android-app/android/**/*.properties
+!android-app/android/gradle.properties
+!android-app/android/gradle/wrapper/gradle-wrapper.properties
 android-app/*.apk
 android-app/pencaAndroid/
 dist/
