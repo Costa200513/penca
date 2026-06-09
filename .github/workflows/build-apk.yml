@@ -31,9 +31,9 @@ jobs:
 
       - name: Prepare Web Assets
         run: |
-          mkdir dist
-          cp -r css img js *.html dist/
-          sed -i "s/const CURRENT_APP_VERSION = \"[^\"]*\";/const CURRENT_APP_VERSION = \"1.0.${{ github.run_number }}\";/g" dist/js/update-checker.js
+          mkdir -p android-app/www
+          cp -r css img js *.html android-app/www/
+          sed -i "s/const CURRENT_APP_VERSION = \"[^\"]*\";/const CURRENT_APP_VERSION = \"1.0.${{ github.run_number }}\";/g" android-app/www/js/update-checker.js
 
       - name: Install Android Project Dependencies
         working-directory: ./android-app
