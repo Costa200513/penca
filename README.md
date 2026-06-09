@@ -146,15 +146,22 @@ Luego instalá el nuevo APK desde cero. Tus datos están guardados en la nube (F
   <tr>
     <td align="center">
       <strong>Ezequiel Costa</strong><br>
-      <em>Desarrollador Principal · FullStack</em><br>
-      <sub>Diseño, arquitectura, frontend y backend de la aplicación completa. Estudiante de 3.º año de Profesorado de Informática — Ingeniería de Software, CeRP Litoral Norte.</sub>
+      <em>Desarrollador principal · Frontend · Firebase · Arquitectura</em><br>
+      <sub>
+        Diseño, arquitectura, frontend, integración con Firebase y lógica general de la aplicación.
+        Estudiante de 3.º año de Profesorado de Informática — Ingeniería de Software, CeRP Litoral Norte.
+      </sub>
     </td>
   </tr>
   <tr>
     <td align="center">
       <strong>Thiago Sosa</strong><br>
-      <em>Security Auditor · Security Hardening · Android Porter</em><br>
-      <sub>Revisión y endurecimiento de reglas de seguridad de Firestore, auditoría del modelo de permisos y porteo de la aplicación web a la plataforma Android mediante Capacitor.</sub>
+      <em>Revisión de seguridad · Firestore Rules · Android · Testing</em><br>
+      <sub>
+        Colaboración en el endurecimiento de reglas de seguridad de Firestore,
+        revisión del modelo de permisos y adaptación de la aplicación web a Android mediante Capacitor.
+        Estudiante de 3.º año de Profesorado de Informática — Ingeniería de Software, CeRP Litoral Norte.
+      </sub>
     </td>
   </tr>
 </table>
