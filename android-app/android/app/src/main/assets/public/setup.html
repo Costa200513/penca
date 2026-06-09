@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Setup protegido | Penca Mundial</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" type="image/png" href="img/logo_penca.png" />
+  </head>
+  <body class="auth-body">
+    <div id="pageLoader" class="page-loader">
+      <div class="loader-card">
+        <img
+          class="loader-logo-img"
+          src="img/logo_penca.png"
+          alt="Mundial 2026" />
+        <strong>Mundial 2026</strong>
+        <span>Cargando...</span>
+      </div>
+    </div>
+
+    <main class="auth-wrapper">
+      <section class="auth-card auth-card-wide">
+        <h1>Setup protegido</h1>
+        <p class="auth-subtitle">
+          Solo un usuario que ya exista como admin activo en Firestore puede
+          recargar datos base.
+        </p>
+
+        <div class="champion-required-box">
+          <strong>Seguridad:</strong>
+          para producción se recomienda eliminar <code>setup.html</code> del
+          deploy. El setup inicial debe hacerse una sola vez con reglas
+          temporales y luego publicar <code>firestore-rules-finales.txt</code>.
+        </div>
+
+        <p>Usuario conectado: <strong id="setupUser">Cargando...</strong></p>
+
+        <button id="loadBtn" class="auth-btn" disabled>
+          Verificando permisos...
+        </button>
+
+        <p id="setupLog" class="inline-message"></p>
+
+        <p class="auth-footer-text">
+          <a href="app.html">Volver a la app</a>
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="js/setup.js"></script>
+    <script src="js/page-loader.js"></script>
+  </body>
+</html>

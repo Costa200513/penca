@@ -1,0 +1,15 @@
+node_modules/
+android-app/node_modules/
+android-app/www/
+android-app/android/**/build/
+android-app/android/.gradle/
+android-app/android/local.properties
+android-app/android/**/*.bin
+android-app/android/**/*.jar
+android-app/android/**/*.aar
+android-app/android/**/*.txt
+android-app/android/**/*.json
+android-app/android/**/*.properties
+android-app/*.apk
+android-app/pencaAndroid/
+dist/

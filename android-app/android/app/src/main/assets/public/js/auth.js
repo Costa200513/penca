@@ -19,10 +19,6 @@ import {
   writeBatch,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { checkForUpdates } from "./update-checker.js";
-
-// Check for updates if running natively
-checkForUpdates();
 
 /* =========================
    UTILIDADES

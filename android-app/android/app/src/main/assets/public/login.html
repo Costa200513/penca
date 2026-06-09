@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Login | Penca Mundial 2026 CeRP Litoral Norte</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/capacitor-overrides.css" />
+    <link rel="icon" type="image/png" href="img/logo_penca.png" />
+  </head>
+  <body class="auth-body">
+    <div id="pageLoader" class="page-loader">
+      <div class="loader-card">
+        <img
+          class="loader-logo-img"
+          src="img/logo_penca.png"
+          alt="Mundial 2026" /><strong>Mundial 2026</strong
+        ><span>Cargando...</span>
+      </div>
+    </div>
+    <main class="auth-wrapper">
+      <section class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-img-wrap">
+            <img src="img/logo_penca.png" alt="Mundial 2026" />
+          </div>
+          <div>
+            <h2>Mundial 2026</h2>
+            <p class="auth-subtitle">Ingresá con tu correo y contraseña.</p>
+          </div>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <div class="auth-form-group">
+            <label>Correo electrónico</label
+            ><input id="loginEmail" type="email" required />
+          </div>
+          <div class="auth-form-group">
+            <label>Contraseña</label
+            ><input id="loginPassword" type="password" required />
+          </div>
+          <button class="auth-btn">Entrar</button>
+        </form>
+        <div class="auth-separator"><span>o</span></div>
+        <button
+          id="googleLoginBtn"
+          class="auth-btn google-auth-btn"
+          type="button">
+          <img class="google-icon" src="img/Google.png" alt="Google" />
+          <span>Entrar con Google</span>
+        </button>
+        <p id="loginMessage" class="inline-message"></p>
+        <p class="auth-footer-text">
+          <a href="reset.html">Olvidé mi contraseña</a>
+        </p>
+        <p class="auth-footer-text">
+          ¿No tenés cuenta? <a href="registro.html">Registrarse</a>
+        </p>
+        <p class="auth-footer-text">
+          <a href="index.html">Volver al inicio</a>
+        </p>
+      </section>
+    </main>
+    <script type="module" src="js/auth.js"></script>
+    <script src="js/page-loader.js"></script>
+
+    <div id="googleProfileModal" class="modal google-profile-modal">
+      <div class="modal-content google-profile-content">
+        <h2>Completá tu perfil</h2>
+        <p>
+          Para entrar con Google, completá estos datos una sola vez. Luego no
+          podrás modificarlos desde el perfil.
+        </p>
+
+        <form id="googleProfileForm">
+          <label for="googleProfileUsername">Nombre de usuario</label>
+          <input
+            id="googleProfileUsername"
+            type="text"
+            maxlength="30"
+            autocomplete="username"
+            placeholder="ejemplo: eze_costa"
+            required />
+
+          <label for="googleProfileParticipantType">Tipo de participante</label>
+          <select id="googleProfileParticipantType" required>
+            <option value="">Seleccioná una opción</option>
+            <option value="student">Estudiante</option>
+            <option value="teacher">Docente</option>
+          </select>
+
+          <label for="googleProfileSpecialty">Especialidad</label>
+          <select id="googleProfileSpecialty" required>
+            <option value="">Seleccioná una especialidad</option>
+            <option value="Ciencias Biológicas">Ciencias Biológicas</option>
+            <option value="Ciencias Geográficas">Ciencias Geográficas</option>
+            <option value="Comunicación Visual">Comunicación Visual</option>
+            <option value="Derecho">Derecho</option>
+            <option value="Español">Español</option>
+            <option value="Filosofía">Filosofía</option>
+            <option value="Física">Física</option>
+            <option value="Historia">Historia</option>
+            <option value="Inglés">Inglés</option>
+            <option value="Literatura">Literatura</option>
+            <option value="Matemática">Matemática</option>
+            <option value="Química">Química</option>
+            <option value="Sociología">Sociología</option>
+            <option value="Educación Musical">Educación Musical</option>
+            <option value="Informática">Informática</option>
+            <option value="Maestro Técnico">Maestro Técnico</option>
+          </select>
+
+          <label for="googleProfileYear">Año</label>
+          <select id="googleProfileYear" required>
+            <option value="">Seleccioná una opción</option>
+            <option value="1">1.º</option>
+            <option value="2">2.º</option>
+            <option value="3">3.º</option>
+            <option value="4">4.º</option>
+            <option value="">No corresponde</option>
+          </select>
+
+          <label for="googleProfilePassword">Crear contraseña</label>
+          <input
+            id="googleProfilePassword"
+            type="password"
+            minlength="6"
+            autocomplete="new-password"
+            placeholder="Mínimo 6 caracteres"
+            required />
+
+          <label for="googleProfilePasswordRepeat">Repetir contraseña</label>
+          <input
+            id="googleProfilePasswordRepeat"
+            type="password"
+            minlength="6"
+            autocomplete="new-password"
+            required />
+
+          <p class="google-profile-help">
+            Esta contraseña te permitirá entrar también con correo y contraseña,
+            además de Google.
+          </p>
+
+          <p id="googleProfileMessage" class="inline-message"></p>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="cancel-btn"
+              id="cancelGoogleProfileBtn">
+              Cancelar
+            </button>
+            <button type="submit" class="save-btn">
+              Crear perfil y entrar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
