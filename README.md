@@ -148,7 +148,7 @@ Luego instalá el nuevo APK desde cero. Tus datos están guardados en la nube (F
       <strong>Ezequiel Costa</strong><br>
       <em>Desarrollador principal · Frontend · Firebase · Arquitectura</em><br>
       <sub>
-        Diseño, arquitectura, frontend, integración con Firebase y lógica general de la aplicación.
+        Diseño, arquitectura, frontend, integración con Firebase y lógica general de la aplicación.<br>
         Estudiante de 3.º año de Profesorado de Informática — Ingeniería de Software, CeRP Litoral Norte.
       </sub>
     </td>
@@ -159,7 +159,7 @@ Luego instalá el nuevo APK desde cero. Tus datos están guardados en la nube (F
       <em>Revisión de seguridad · Firestore Rules · Android · Testing</em><br>
       <sub>
         Colaboración en el endurecimiento de reglas de seguridad de Firestore,
-        revisión del modelo de permisos y adaptación de la aplicación web a Android mediante Capacitor.
+        revisión del modelo de permisos y adaptación de la aplicación web a Android mediante Capacitor.<br>
         Estudiante de 3.º año de Profesorado de Informática — Ingeniería de Software, CeRP Litoral Norte.
       </sub>
     </td>
