@@ -6,6 +6,7 @@ android-app/android/.gradle/
 android-app/android/local.properties
 android-app/android/**/*.bin
 android-app/android/**/*.jar
+!android-app/android/gradle/wrapper/gradle-wrapper.jar
 android-app/android/**/*.aar
 android-app/android/**/*.txt
 android-app/android/**/*.json
