@@ -303,40 +303,52 @@ function hasTrustedVerifiedIdentity(user) {
 }
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "login.html";
-    return;
+  try {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+
+    if (!hasTrustedVerifiedIdentity(user)) {
+      alert(
+        "Debés verificar tu correo electrónico antes de ingresar. Revisá tu bandeja de entrada.",
+      );
+      await signOut(auth);
+      window.location.href = "login.html";
+      return;
+    }
+
+    currentUser = user;
+    const snap = await getDoc(doc(db, "users", user.uid));
+
+    if (!snap.exists()) {
+      alert(
+        "Tu usuario todavía no fue activado. Iniciá sesión nuevamente o contactá al administrador.",
+      );
+      await signOut(auth);
+      window.location.href = "login.html";
+      return;
+    }
+
+    userData = snap.data();
+
+    if (!userData.active) {
+      alert("Tu usuario está desactivado.");
+      await signOut(auth);
+      window.location.href = "login.html";
+      return;
+    }
+
+    forceDarkTheme();
+    await loadData();
+    renderAll();
+    startRealtimeListeners();
+    hidePageLoader();
+  } catch (error) {
+    console.error("Error al cargar la aplicación:", error);
+    hidePageLoader();
+    alert("No se pudo cargar la aplicación. Revisá tu conexión.");
   }
-  if (!hasTrustedVerifiedIdentity(user)) {
-    alert(
-      "Debés verificar tu correo electrónico antes de ingresar. Revisá tu bandeja de entrada.",
-    );
-    await signOut(auth);
-    window.location.href = "login.html";
-    return;
-  }
-  currentUser = user;
-  const snap = await getDoc(doc(db, "users", user.uid));
-  if (!snap.exists()) {
-    alert(
-      "Tu usuario todavía no fue activado. Iniciá sesión nuevamente o contactá al administrador.",
-    );
-    await signOut(auth);
-    window.location.href = "login.html";
-    return;
-  }
-  userData = snap.data();
-  if (!userData.active) {
-    alert("Tu usuario está desactivado.");
-    await signOut(auth);
-    window.location.href = "login.html";
-    return;
-  }
-  forceDarkTheme();
-  await loadData();
-  renderAll();
-  startRealtimeListeners();
-  hidePageLoader();
 });
 
 async function loadData() {
@@ -351,7 +363,8 @@ async function loadData() {
   */
   if (
     isAdmin() &&
-    (!Array.isArray(leaderboard.individual) || leaderboard.individual.length === 0)
+    (!Array.isArray(leaderboard.individual) ||
+      leaderboard.individual.length === 0)
   ) {
     await recalculateLeaderboards();
   }
@@ -908,12 +921,14 @@ function rankingData() {
 }
 
 function specialtyRankingData() {
-  if (Array.isArray(leaderboard.specialties) && leaderboard.specialties.length) {
+  if (
+    Array.isArray(leaderboard.specialties) &&
+    leaderboard.specialties.length
+  ) {
     return leaderboard.specialties;
   }
   return isAdmin() ? localSpecialtyRankingData() : [];
 }
-
 
 function emptyLeaderboardRowFromUser(user = {}) {
   return {
@@ -965,7 +980,10 @@ function sortAndPositionLeaderboard(rows = []) {
   return normalizeLeaderboardRows(rows)
     .map((row) => ({
       ...row,
-      aciertos: Number(row.exact || 0) + Number(row.partial || 0) + Number(row.draw || 0),
+      aciertos:
+        Number(row.exact || 0) +
+        Number(row.partial || 0) +
+        Number(row.draw || 0),
     }))
     .sort((a, b) => b.points - a.points || b.exact - a.exact)
     .map((row, index) => ({ ...row, position: index + 1 }));
@@ -981,13 +999,18 @@ async function saveCurrentLeaderboard(individualRows) {
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(doc(db, "leaderboards", "current"), leaderboard, { merge: true });
+  await setDoc(doc(db, "leaderboards", "current"), leaderboard, {
+    merge: true,
+  });
   return leaderboard;
 }
 
 async function loadPredictionsForMatch(matchId) {
   const predictionsSnap = await getDocs(
-    query(collection(db, "predictions"), where("matchId", "==", String(matchId))),
+    query(
+      collection(db, "predictions"),
+      where("matchId", "==", String(matchId)),
+    ),
   );
 
   return predictionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -1016,13 +1039,34 @@ async function getUserForLeaderboard(uid) {
 function applyScoreDelta(row, oldScore, newScore) {
   const next = { ...row };
 
-  next.points = Number(next.points || 0) + Number(newScore.points || 0) - Number(oldScore.points || 0);
-  next.exact = Number(next.exact || 0) + Number(newScore.exact || 0) - Number(oldScore.exact || 0);
-  next.partial = Number(next.partial || 0) + Number(newScore.partial || 0) - Number(oldScore.partial || 0);
-  next.draw = Number(next.draw || 0) + Number(newScore.draw || 0) - Number(oldScore.draw || 0);
-  next.penalties = Number(next.penalties || 0) + Number(newScore.penalties || 0) - Number(oldScore.penalties || 0);
-  next.incorrect = Number(next.incorrect || 0) + Number(newScore.incorrect || 0) - Number(oldScore.incorrect || 0);
-  next.aciertos = Number(next.exact || 0) + Number(next.partial || 0) + Number(next.draw || 0);
+  next.points =
+    Number(next.points || 0) +
+    Number(newScore.points || 0) -
+    Number(oldScore.points || 0);
+  next.exact =
+    Number(next.exact || 0) +
+    Number(newScore.exact || 0) -
+    Number(oldScore.exact || 0);
+  next.partial =
+    Number(next.partial || 0) +
+    Number(newScore.partial || 0) -
+    Number(oldScore.partial || 0);
+  next.draw =
+    Number(next.draw || 0) +
+    Number(newScore.draw || 0) -
+    Number(oldScore.draw || 0);
+  next.penalties =
+    Number(next.penalties || 0) +
+    Number(newScore.penalties || 0) -
+    Number(oldScore.penalties || 0);
+  next.incorrect =
+    Number(next.incorrect || 0) +
+    Number(newScore.incorrect || 0) -
+    Number(oldScore.incorrect || 0);
+  next.aciertos =
+    Number(next.exact || 0) +
+    Number(next.partial || 0) +
+    Number(next.draw || 0);
 
   return next;
 }
@@ -1037,17 +1081,26 @@ async function updateLeaderboardForMatch(oldMatch, newMatch) {
 
   const matchPredictions = await loadPredictionsForMatch(newMatch.id);
 
-  if (!Array.isArray(leaderboard.individual) || leaderboard.individual.length === 0) {
+  if (
+    !Array.isArray(leaderboard.individual) ||
+    leaderboard.individual.length === 0
+  ) {
     /*
       Fallback seguro:
       si el ranking todavía no existe, se hace un recálculo completo una sola vez.
     */
     predictions = matchPredictions;
-    return recalculateLeaderboards({ forceUsers: true, forcePredictions: true });
+    return recalculateLeaderboards({
+      forceUsers: true,
+      forcePredictions: true,
+    });
   }
 
   const rowsByUid = new Map(
-    normalizeLeaderboardRows(leaderboard.individual).map((row) => [row.uid, row]),
+    normalizeLeaderboardRows(leaderboard.individual).map((row) => [
+      row.uid,
+      row,
+    ]),
   );
 
   for (const prediction of matchPredictions) {
@@ -1065,9 +1118,13 @@ async function updateLeaderboardForMatch(oldMatch, newMatch) {
     rowsByUid.set(prediction.uid, applyScoreDelta(row, oldScore, newScore));
   }
 
-  const predictionIds = new Set(matchPredictions.map((prediction) => prediction.id));
+  const predictionIds = new Set(
+    matchPredictions.map((prediction) => prediction.id),
+  );
   const mergedPredictions = [
-    ...predictions.filter((prediction) => prediction.matchId != String(newMatch.id)),
+    ...predictions.filter(
+      (prediction) => prediction.matchId != String(newMatch.id),
+    ),
     ...matchPredictions,
   ];
 
@@ -1125,7 +1182,10 @@ async function updateLeaderboardForUser(uid) {
   return saveCurrentLeaderboard(individual);
 }
 
-async function updateLeaderboardForChampionChange(previousChampionId, nextChampionId) {
+async function updateLeaderboardForChampionChange(
+  previousChampionId,
+  nextChampionId,
+) {
   /*
     Definir o corregir campeón real afecta a todos.
     Para evitar usar datos viejos de leaderboards/current, siempre recargamos
@@ -1145,7 +1205,10 @@ async function updateLeaderboardForChampionChange(previousChampionId, nextChampi
     Esto mantiene funcionalidad en instalaciones nuevas o recién migradas.
   */
   if (!individual.length) {
-    return recalculateLeaderboards({ forceUsers: false, forcePredictions: true });
+    return recalculateLeaderboards({
+      forceUsers: false,
+      forcePredictions: true,
+    });
   }
 
   individual = individual.map((row) => {
@@ -1182,7 +1245,6 @@ async function updateLeaderboardForChampionChange(previousChampionId, nextChampi
 
   return saveCurrentLeaderboard(individual);
 }
-
 
 async function recalculateLeaderboards(options = {}) {
   const { forceUsers = false, forcePredictions = false } = options;
@@ -1348,7 +1410,9 @@ async function saveChampionProfile(e) {
       championId,
       championName,
     };
-    users = users.map((u) => (u.uid === currentUser.uid ? { ...u, championId, championName } : u));
+    users = users.map((u) =>
+      u.uid === currentUser.uid ? { ...u, championId, championName } : u,
+    );
     renderAll();
   } catch (err) {
     console.error(err);

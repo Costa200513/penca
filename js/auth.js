@@ -15,6 +15,7 @@ import {
   doc,
   getDoc,
   writeBatch,
+  runTransaction,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -100,7 +101,9 @@ function usernameCandidateFromUser(user) {
 }
 
 function userSignedInWithGoogle(user) {
-  return user?.providerData?.some((provider) => provider.providerId === "google.com");
+  return user?.providerData?.some(
+    (provider) => provider.providerId === "google.com",
+  );
 }
 
 function hasTrustedVerifiedIdentity(user) {
@@ -220,6 +223,147 @@ function openGoogleProfileModal(user) {
   });
 }
 
+function emptyLeaderboardRowFromProfile(profile = {}) {
+  return {
+    uid: profile.uid,
+    username: profile.username || "",
+    fullName: profile.fullName || "",
+    specialty: profile.specialty || "",
+    participantType: profile.participantType || "",
+    year: profile.year || "",
+    championId: profile.championId || "",
+    championName: profile.championName || "",
+    exact: 0,
+    partial: 0,
+    draw: 0,
+    penalties: 0,
+    incorrect: 0,
+    points: 0,
+    aciertos: 0,
+    predictionsCount: 0,
+    position: 0,
+  };
+}
+
+function normalizeLeaderboardRow(row = {}) {
+  return {
+    uid: row.uid || "",
+    username: row.username || "",
+    fullName: row.fullName || "",
+    specialty: row.specialty || "",
+    participantType: row.participantType || "",
+    year: row.year || "",
+    championId: row.championId || "",
+    championName: row.championName || "",
+    exact: Number(row.exact || 0),
+    partial: Number(row.partial || 0),
+    draw: Number(row.draw || 0),
+    penalties: Number(row.penalties || 0),
+    incorrect: Number(row.incorrect || 0),
+    points: Number(row.points || 0),
+    aciertos: Number(row.aciertos || 0),
+    predictionsCount: Number(row.predictionsCount || 0),
+    position: Number(row.position || 0),
+  };
+}
+
+function sortAndPositionLeaderboard(rows = []) {
+  return rows
+    .filter((row) => row && row.uid)
+    .map(normalizeLeaderboardRow)
+    .map((row) => ({
+      ...row,
+      aciertos:
+        Number(row.exact || 0) +
+        Number(row.partial || 0) +
+        Number(row.draw || 0),
+    }))
+    .sort((a, b) => b.points - a.points || b.exact - a.exact)
+    .map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+function buildSpecialtyLeaderboard(individual = []) {
+  const bySpecialty = new Map();
+
+  individual.forEach((user) => {
+    const key = user.specialty || "Sin especialidad";
+
+    if (!bySpecialty.has(key)) {
+      bySpecialty.set(key, {
+        username: key,
+        specialty: key,
+        fullName: key,
+        points: 0,
+        aciertos: 0,
+        exact: 0,
+        partial: 0,
+        draw: 0,
+        penalties: 0,
+        incorrect: 0,
+        users: 0,
+      });
+    }
+
+    const row = bySpecialty.get(key);
+    row.points += Number(user.points || 0);
+    row.aciertos += Number(user.aciertos || 0);
+    row.exact += Number(user.exact || 0);
+    row.partial += Number(user.partial || 0);
+    row.draw += Number(user.draw || 0);
+    row.penalties += Number(user.penalties || 0);
+    row.incorrect += Number(user.incorrect || 0);
+    row.users += 1;
+  });
+
+  return [...bySpecialty.values()]
+    .sort((a, b) => b.points - a.points || b.exact - a.exact)
+    .map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+async function ensureUserInCurrentLeaderboard(profile) {
+  const leaderboardRef = doc(db, "leaderboards", "current");
+
+  await runTransaction(db, async (transaction) => {
+    const leaderboardSnap = await transaction.get(leaderboardRef);
+    const current = leaderboardSnap.exists() ? leaderboardSnap.data() : {};
+    const individual = Array.isArray(current.individual)
+      ? current.individual.map(normalizeLeaderboardRow)
+      : [];
+
+    if (individual.some((row) => row.uid === profile.uid)) {
+      return;
+    }
+
+    const updatedIndividual = sortAndPositionLeaderboard([
+      ...individual,
+      emptyLeaderboardRowFromProfile(profile),
+    ]);
+
+    const updatedSpecialties = buildSpecialtyLeaderboard(updatedIndividual);
+
+    transaction.set(
+      leaderboardRef,
+      {
+        individual: updatedIndividual,
+        specialties: updatedSpecialties,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
+async function safelyEnsureUserInCurrentLeaderboard(profile) {
+  try {
+    await ensureUserInCurrentLeaderboard(profile);
+  } catch (error) {
+    console.error(
+      "No se pudo agregar el usuario al leaderboard inicial:",
+      error,
+    );
+  }
+}
+
 async function ensureGoogleUserProfile(user, profileData = null) {
   /*
     Google funciona como registro + inicio de sesión directo.
@@ -259,9 +403,7 @@ async function ensureGoogleUserProfile(user, profileData = null) {
     );
   }
 
-  const batch = writeBatch(db);
-
-  batch.set(userRef, {
+  const profile = {
     uid: user.uid,
     username: data.username,
     fullName: user.displayName || email,
@@ -275,7 +417,11 @@ async function ensureGoogleUserProfile(user, profileData = null) {
     championName: "",
     createdAt: serverTimestamp(),
     activatedAt: serverTimestamp(),
-  });
+  };
+
+  const batch = writeBatch(db);
+
+  batch.set(userRef, profile);
 
   batch.set(usernameRef, {
     uid: user.uid,
@@ -283,6 +429,12 @@ async function ensureGoogleUserProfile(user, profileData = null) {
   });
 
   await batch.commit();
+
+  await safelyEnsureUserInCurrentLeaderboard({
+    ...profile,
+    createdAt: null,
+    activatedAt: null,
+  });
 
   return true;
 }
@@ -318,9 +470,7 @@ async function ensureVerifiedUserProfile(user) {
     );
   }
 
-  const batch = writeBatch(db);
-
-  batch.set(userRef, {
+  const profile = {
     uid: user.uid,
     username: pending.username,
     fullName: pending.fullName,
@@ -334,7 +484,11 @@ async function ensureVerifiedUserProfile(user) {
     championName: "",
     createdAt: serverTimestamp(),
     activatedAt: serverTimestamp(),
-  });
+  };
+
+  const batch = writeBatch(db);
+
+  batch.set(userRef, profile);
 
   batch.set(usernameRef, {
     uid: user.uid,
@@ -345,6 +499,12 @@ async function ensureVerifiedUserProfile(user) {
   batch.delete(pendingRef);
 
   await batch.commit();
+
+  await safelyEnsureUserInCurrentLeaderboard({
+    ...profile,
+    createdAt: null,
+    activatedAt: null,
+  });
 
   return true;
 }
