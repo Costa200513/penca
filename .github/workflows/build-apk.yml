@@ -34,6 +34,7 @@ jobs:
           mkdir -p android-app/www
           cp -r css img js *.html android-app/www/
           sed -i "s/const CURRENT_APP_VERSION = \"[^\"]*\";/const CURRENT_APP_VERSION = \"1.0.${{ github.run_number }}\";/g" android-app/www/js/update-checker.js
+          sed -i 's|</head>|<link rel="stylesheet" href="css/capacitor-overrides.css"></head>|' android-app/www/*.html
 
       - name: Install Android Project Dependencies
         working-directory: ./android-app

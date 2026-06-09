@@ -1,4 +1,4 @@
-package com.pencamundial.app;
+package com.ezecosta.pencamundial;
 
 import com.getcapacitor.BridgeActivity;
 

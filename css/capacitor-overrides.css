@@ -86,13 +86,20 @@ html, body {
   overflow-x: hidden !important;
 }
 
-.app {
+.app, .auth-wrapper, .landing-wrapper {
   height: auto !important;
   min-height: 100vh !important;
   overflow-y: visible !important;
   overflow-x: hidden !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+.auth-wrapper, .landing-wrapper {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding-top: calc(40px + var(--sat)) !important;
+  padding-bottom: calc(40px + var(--sab)) !important;
 }
 
 .mobile-topbar {

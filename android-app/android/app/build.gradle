@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.pencamundial.app"
+    namespace "com.ezecosta.pencamundial"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.pencamundial.app"
+        applicationId "com.ezecosta.pencamundial"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
