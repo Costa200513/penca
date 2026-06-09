@@ -140,16 +140,6 @@ Luego instalá el nuevo APK desde cero. Tus datos están guardados en la nube (F
 
 ---
 
-## ⚙️ Setup inicial del torneo (solo admins)
-
-1. Configurar Firebase (crear proyecto, habilitar Auth y Firestore)
-2. Copiar la configuración en `js/firebase-config.js`
-3. Aplicar las reglas de `firestore-rules-inicial-setup.txt` temporalmente
-4. Acceder a `setup.html` con una cuenta de admin para cargar equipos, fases y partidos
-5. Aplicar las reglas finales de `firestore-rules-finales.txt`
-
----
-
 ## 👥 Desarrolladores
 
 <table>
