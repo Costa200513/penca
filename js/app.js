@@ -34,6 +34,8 @@ let realtimeStarted = false;
 let renderTimer = null;
 let matchesSnapshotReady = false;
 let previousMatchesById = new Map();
+let pendingEditScrollSnapshot = null;
+let pendingEditScrollUntil = 0;
 
 const $ = (id) => document.getElementById(id);
 const esc = (v = "") =>
@@ -147,6 +149,10 @@ function renderSoon() {
     }
 
     renderAll();
+
+    if (pendingEditScrollSnapshot && Date.now() <= pendingEditScrollUntil) {
+      restoreEditScrollSnapshot(pendingEditScrollSnapshot);
+    }
   }, 80);
 }
 
@@ -322,6 +328,8 @@ async function loadData() {
 }
 
 function renderAll() {
+  const viewSnapshot = currentViewSnapshot();
+
   renderShell();
   renderFixture();
   renderRanking();
@@ -332,97 +340,192 @@ function renderAll() {
     renderAdmin();
     renderUsersAdmin();
   }
+
+  restoreViewSnapshot(viewSnapshot);
 }
 
 function activeSectionId() {
   return document.querySelector(".section.active")?.id || "";
 }
 
-function saveSectionScrollSnapshot() {
-  /*
-    Guarda posición solo para secciones donde se edita/guarda contenido:
-    Fixture y Admin. No se usa para Ranking, Perfil, Reglas ni Usuarios.
-  */
+function currentViewSnapshot() {
   const sectionId = activeSectionId();
-
-  if (!["fixture", "admin"].includes(sectionId)) return null;
-
-  const section = document.getElementById(sectionId);
+  const section = sectionId ? document.getElementById(sectionId) : null;
   const activePhase = section?.querySelector(".fixture-phase.active");
+  const activeRankingTab = section?.querySelector(".ranking-tab-panel.active");
 
   return {
     sectionId,
-    scrollY: window.scrollY,
     phaseId: activePhase?.id || "",
+    rankingTabId: activeRankingTab?.id || "",
   };
 }
 
-function restoreSectionScrollSnapshot(snapshot) {
-  if (!snapshot || !snapshot.sectionId) return;
+function restoreViewSnapshot(snapshot) {
+  if (!snapshot?.sectionId) return;
 
-  requestAnimationFrame(() => {
-    const section = document.getElementById(snapshot.sectionId);
-    if (!section) return;
+  const section = document.getElementById(snapshot.sectionId);
+  if (!section) return;
 
-    /*
-      Restauramos la misma sección sin usar showSection(),
-      porque showSection está reservado para navegación manual
-      y siempre manda arriba.
-    */
-    document
-      .querySelectorAll(".section")
-      .forEach((item) => item.classList.remove("active"));
+  document
+    .querySelectorAll(".section")
+    .forEach((item) => item.classList.remove("active"));
+  section.classList.add("active");
 
-    section.classList.add("active");
+  document
+    .querySelectorAll(".menu button")
+    .forEach((button) => button.classList.remove("active"));
 
-    document
-      .querySelectorAll(".menu button")
-      .forEach((button) => button.classList.remove("active"));
+  const menuButton = [...document.querySelectorAll(".menu button")].find(
+    (button) => {
+      const onclick = button.getAttribute("onclick") || "";
+      return (
+        onclick.includes(`'${snapshot.sectionId}'`) ||
+        onclick.includes(`"${snapshot.sectionId}"`)
+      );
+    },
+  );
+  menuButton?.classList.add("active");
 
-    const menuButton = [...document.querySelectorAll(".menu button")].find(
+  if (snapshot.phaseId) {
+    const phase = document.getElementById(snapshot.phaseId);
+    const phaseButton = [...section.querySelectorAll(".phase-btn")].find(
       (button) =>
-        button.getAttribute("onclick")?.includes(`'${snapshot.sectionId}'`) ||
-        button.getAttribute("onclick")?.includes(`"${snapshot.sectionId}"`),
+        (button.getAttribute("onclick") || "").includes(snapshot.phaseId),
     );
 
-    menuButton?.classList.add("active");
+    if (phase && phaseButton) {
+      section
+        .querySelectorAll(".fixture-phase")
+        .forEach((item) => item.classList.remove("active"));
+      section
+        .querySelectorAll(".phase-btn")
+        .forEach((button) => button.classList.remove("active"));
 
-    if (snapshot.phaseId) {
-      const phase = document.getElementById(snapshot.phaseId);
-      const phaseButton = [...section.querySelectorAll(".phase-btn")].find(
-        (button) => button.getAttribute("onclick")?.includes(snapshot.phaseId),
-      );
-
-      if (phase && phaseButton) {
-        section
-          .querySelectorAll(".fixture-phase")
-          .forEach((item) => item.classList.remove("active"));
-
-        section
-          .querySelectorAll(".phase-btn")
-          .forEach((button) => button.classList.remove("active"));
-
-        phase.classList.add("active");
-        phaseButton.classList.add("active");
-      }
+      phase.classList.add("active");
+      phaseButton.classList.add("active");
     }
+  }
 
-    window.scrollTo({
-      top: snapshot.scrollY,
-      left: 0,
-      behavior: "auto",
-    });
+  if (snapshot.rankingTabId) {
+    const rankingTab = document.getElementById(snapshot.rankingTabId);
+    const rankingButton = [
+      ...section.querySelectorAll(".ranking-tabs .phase-btn"),
+    ].find((button) =>
+      (button.getAttribute("onclick") || "").includes(snapshot.rankingTabId),
+    );
+
+    if (rankingTab && rankingButton) {
+      section
+        .querySelectorAll(".ranking-tab-panel")
+        .forEach((panel) => panel.classList.remove("active"));
+      section
+        .querySelectorAll(".ranking-tabs .phase-btn")
+        .forEach((button) => button.classList.remove("active"));
+
+      rankingTab.classList.add("active");
+      rankingButton.classList.add("active");
+    }
+  }
+}
+
+function scrollContainers() {
+  return [
+    document.scrollingElement,
+    document.documentElement,
+    document.body,
+    document.querySelector(".main"),
+  ].filter(Boolean);
+}
+
+function currentScrollY() {
+  const values = [
+    window.scrollY || 0,
+    ...scrollContainers().map((item) => item.scrollTop || 0),
+  ];
+
+  return Math.max(...values);
+}
+
+function setScrollY(value) {
+  window.scrollTo({
+    top: value,
+    left: 0,
+    behavior: "auto",
+  });
+
+  scrollContainers().forEach((item) => {
+    item.scrollTop = value;
   });
 }
 
-function scrollTopAfterSectionChange() {
-  requestAnimationFrame(() => {
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "auto",
-    });
-  });
+function forceScrollTop() {
+  const apply = () => setScrollY(0);
+
+  apply();
+  requestAnimationFrame(apply);
+  setTimeout(apply, 0);
+  setTimeout(apply, 80);
+}
+
+function saveEditScrollSnapshot(anchorId = "") {
+  /*
+    Solo guardamos scroll para operaciones internas de guardado.
+    No se usa cuando el usuario cambia de sección desde el menú.
+
+    Además del número de scroll, guardamos una tarjeta/partido como ancla.
+    Esto es más estable cuando Firestore vuelve a renderizar la lista.
+  */
+  const view = currentViewSnapshot();
+
+  if (!["fixture", "admin"].includes(view.sectionId)) return null;
+
+  const anchor = anchorId ? document.getElementById(anchorId) : null;
+
+  return {
+    ...view,
+    scrollY: currentScrollY(),
+    anchorId,
+    anchorTop: anchor ? anchor.getBoundingClientRect().top : null,
+  };
+}
+
+function setPendingEditScrollSnapshot(snapshot) {
+  if (!snapshot) return;
+  pendingEditScrollSnapshot = snapshot;
+  pendingEditScrollUntil = Date.now() + 1600;
+}
+
+function clearPendingEditScrollSnapshot() {
+  pendingEditScrollSnapshot = null;
+  pendingEditScrollUntil = 0;
+}
+
+function restoreEditScrollSnapshot(snapshot) {
+  if (!snapshot || !["fixture", "admin"].includes(snapshot.sectionId)) return;
+
+  const apply = () => {
+    restoreViewSnapshot(snapshot);
+
+    const anchor =
+      snapshot.anchorId && snapshot.anchorTop !== null
+        ? document.getElementById(snapshot.anchorId)
+        : null;
+
+    if (anchor) {
+      const currentTop = anchor.getBoundingClientRect().top;
+      const delta = currentTop - snapshot.anchorTop;
+      setScrollY(currentScrollY() + delta);
+    } else {
+      setScrollY(snapshot.scrollY);
+    }
+  };
+
+  apply();
+  requestAnimationFrame(apply);
+  setTimeout(apply, 0);
+  setTimeout(apply, 80);
+  setTimeout(apply, 220);
 }
 
 function isAdmin() {
@@ -1038,7 +1141,8 @@ async function saveResult(e) {
   else if (goalsB > goalsA) winnerId = m.teamBId;
   else if (penaltyWinnerId) winnerId = penaltyWinnerId;
   try {
-    const scrollSnapshot = saveSectionScrollSnapshot();
+    const scrollSnapshot = saveEditScrollSnapshot(`admin-match-${id}`);
+    setPendingEditScrollSnapshot(scrollSnapshot);
 
     setButtonLoading(submitButton, true, "Guardando...");
     await updateDoc(doc(db, "matches", id), {
@@ -1051,7 +1155,7 @@ async function saveResult(e) {
     });
     await loadData();
     renderAll();
-    restoreSectionScrollSnapshot(scrollSnapshot);
+    restoreEditScrollSnapshot(scrollSnapshot);
   } finally {
     setButtonLoading(submitButton, false);
   }
@@ -1103,7 +1207,8 @@ async function saveSchedule(e) {
   const dateTime = `${dateOnly}T${matchTime}:00-03:00`;
   const dateText = `${weekdayDateLabel(dateOnly)} · ${matchTime} UY${m?.venue ? " · " + m.venue : ""}`;
 
-  const scrollSnapshot = saveSectionScrollSnapshot();
+  const scrollSnapshot = saveEditScrollSnapshot(`admin-match-${id}`);
+  setPendingEditScrollSnapshot(scrollSnapshot);
 
   await updateDoc(doc(db, "matches", id), {
     dateOnly,
@@ -1114,7 +1219,7 @@ async function saveSchedule(e) {
 
   await loadData();
   renderAll();
-  restoreSectionScrollSnapshot(scrollSnapshot);
+  restoreEditScrollSnapshot(scrollSnapshot);
 }
 
 async function saveTeams(e) {
@@ -1122,7 +1227,8 @@ async function saveTeams(e) {
   if (!confirm("¿Seguro que querés actualizar los equipos?")) return;
   const id = e.target.dataset.match;
   const fd = new FormData(e.target);
-  const scrollSnapshot = saveSectionScrollSnapshot();
+  const scrollSnapshot = saveEditScrollSnapshot(`admin-match-${id}`);
+  setPendingEditScrollSnapshot(scrollSnapshot);
 
   await updateDoc(doc(db, "matches", id), {
     teamAId: fd.get("teamAId"),
@@ -1131,7 +1237,7 @@ async function saveTeams(e) {
   });
   await loadData();
   renderAll();
-  restoreSectionScrollSnapshot(scrollSnapshot);
+  restoreEditScrollSnapshot(scrollSnapshot);
 }
 async function saveRealChampion(e) {
   e.preventDefault();
@@ -1195,6 +1301,8 @@ async function savePrediction(e) {
 
   const predictionId = `${currentUser.uid}_${selectedMatch.id}`;
   const predictionRef = doc(db, "predictions", predictionId);
+  const scrollSnapshot = saveEditScrollSnapshot(`match-${selectedMatch.id}`);
+  setPendingEditScrollSnapshot(scrollSnapshot);
 
   try {
     setButtonLoading(submitButton, true, "Guardando...");
@@ -1249,15 +1357,13 @@ async function savePrediction(e) {
       predictions.push(localPrediction);
     }
 
-    const scrollSnapshot = saveSectionScrollSnapshot();
-
     closeModal();
     renderAll();
-    restoreSectionScrollSnapshot(scrollSnapshot);
+    restoreEditScrollSnapshot(scrollSnapshot);
 
     await loadData();
     renderAll();
-    restoreSectionScrollSnapshot(scrollSnapshot);
+    restoreEditScrollSnapshot(scrollSnapshot);
   } catch (err) {
     console.error(err);
     alert(
@@ -1296,10 +1402,12 @@ window.showSection = (id, btn) => {
   closeMobileMenu();
 
   /*
-    Al cambiar manualmente de apartado, siempre empezamos arriba.
-    Así el scroll del Fixture no se arrastra al Ranking u otras secciones.
+    Navegación manual entre apartados:
+    siempre empieza arriba para que el scroll del Fixture
+    no se arrastre a Ranking, Perfil, Reglas, Admin o Usuarios.
   */
-  scrollTopAfterSectionChange();
+  clearPendingEditScrollSnapshot();
+  forceScrollTop();
 };
 window.showFixturePhase = (id, btn) => {
   const parent = btn.closest(".section");
