@@ -780,8 +780,41 @@ function renderShell() {
   <div id="predictionModal" class="modal"></div>`;
 }
 
+function renderChampionPromptCard() {
+  if (isAdmin() || userData?.championId) return "";
+
+  if (championSelectionClosed()) {
+    return `<div class="champion-fixture-card champion-fixture-card-closed">
+      <div>
+        <span class="profile-label">Campeón Mundial 2026</span>
+        <h3>Selección cerrada</h3>
+        <p>La elección de campeón ya no está disponible.</p>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="champion-fixture-card">
+    <div class="champion-fixture-copy">
+      <span class="profile-label">Campeón Mundial 2026</span>
+      <h3>Elegí tu campeón</h3>
+      <p>Seleccioná quién creés que va a ganar el Mundial 2026. Si acertás, sumás <strong>+10 puntos</strong> al final del torneo.</p>
+    </div>
+    <form id="fixtureChampionForm" class="champion-fixture-form">
+      <select id="fixtureChampionId" required>
+        <option value="">Elegí una selección</option>
+        ${realTeamsSorted()
+          .map((team) => `<option value="${esc(team.id)}">${esc(team.name)}</option>`)
+          .join("")}
+      </select>
+      <button class="save-btn">Guardar campeón</button>
+      <p id="fixtureChampionMsg" class="inline-message"></p>
+    </form>
+  </div>`;
+}
+
 function renderFixture() {
   const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos permanecen abiertos y cierran 30 minutos antes del inicio. </p>
+  ${renderChampionPromptCard()}
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
     .map(
@@ -793,6 +826,7 @@ function renderFixture() {
     )
     .join("")}`;
   $("fixture").innerHTML = html;
+  $("fixtureChampionForm")?.addEventListener("submit", saveChampionFromFixture);
 }
 function renderMatchCard(m) {
   const [label, klass] = statusFor(m);
@@ -1366,60 +1400,106 @@ function renderProfile() {
   $("profileChampionForm")?.addEventListener("submit", saveChampionProfile);
 }
 
-async function saveChampionProfile(e) {
-  e.preventDefault();
-  const msg = $("championMsg");
-  const championId = $("profileChampionId")?.value || "";
+async async function saveChampionSelection(championId) {
   const championName = teamName(championId);
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, "users", currentUser.uid), {
+    championId,
+    championName,
+    updatedAt: serverTimestamp(),
+  });
+
+  batch.set(doc(db, "champions", currentUser.uid), {
+    uid: currentUser.uid,
+    championId,
+    championName,
+    locked: true,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+
+  userData = {
+    ...userData,
+    championId,
+    championName,
+  };
+
+  users = users.map((u) =>
+    u.uid === currentUser.uid ? { ...u, championId, championName } : u,
+  );
+
+  return championName;
+}
+
+async function handleChampionSelection(championId, messageElement, options = {}) {
+  const msg = messageElement;
 
   if (!championId) {
-    msg.textContent = "Debés elegir un campeón.";
-    msg.className = "inline-message error";
-    return;
+    if (msg) {
+      msg.textContent = "Debés elegir un campeón.";
+      msg.className = "inline-message error";
+    }
+    return false;
   }
 
   if (championSelectionClosed()) {
-    msg.textContent = "La elección de campeón ya está cerrada.";
-    msg.className = "inline-message error";
-    return;
+    if (msg) {
+      msg.textContent = "La elección de campeón ya está cerrada.";
+      msg.className = "inline-message error";
+    }
+    return false;
   }
 
   if (userData.championId) {
-    msg.textContent = "Ya elegiste un campeón. La elección está bloqueada.";
-    msg.className = "inline-message error";
-    return;
+    if (msg) {
+      msg.textContent = "Ya elegiste un campeón. La elección está bloqueada.";
+      msg.className = "inline-message error";
+    }
+    return false;
   }
 
   try {
-    const batch = writeBatch(db);
-    batch.update(doc(db, "users", currentUser.uid), {
-      championId,
-      championName,
-      updatedAt: serverTimestamp(),
-    });
-    batch.set(doc(db, "champions", currentUser.uid), {
-      uid: currentUser.uid,
-      championId,
-      championName,
-      locked: true,
-      createdAt: serverTimestamp(),
-    });
-    await batch.commit();
-    userData = {
-      ...userData,
-      championId,
-      championName,
-    };
-    users = users.map((u) =>
-      u.uid === currentUser.uid ? { ...u, championId, championName } : u,
-    );
-    renderAll();
+    await saveChampionSelection(championId);
+
+    if (msg) {
+      msg.textContent = "Campeón elegido correctamente.";
+      msg.className = "inline-message success";
+    }
+
+    if (options.delayRender) {
+      setTimeout(() => renderAll(), 700);
+    } else {
+      renderAll();
+    }
+
+    return true;
   } catch (err) {
     console.error(err);
-    msg.textContent =
-      "No se pudo guardar el campeón. Revisá las reglas de Firestore.";
-    msg.className = "inline-message error";
+
+    if (msg) {
+      msg.textContent =
+        "No se pudo guardar el campeón. Revisá las reglas de Firestore.";
+      msg.className = "inline-message error";
+    }
+
+    return false;
   }
+}
+
+function saveChampionProfile(e) {
+  e.preventDefault();
+  handleChampionSelection($("profileChampionId")?.value || "", $("championMsg"));
+}
+
+function saveChampionFromFixture(e) {
+  e.preventDefault();
+  handleChampionSelection(
+    $("fixtureChampionId")?.value || "",
+    $("fixtureChampionMsg"),
+    { delayRender: true },
+  );
 }
 
 async function changePassword(e) {
