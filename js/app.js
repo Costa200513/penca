@@ -36,6 +36,7 @@ let adminPredictionsLoaded = false;
 let adminDataLoadedAt = 0;
 let settings = { predictionsCloseMinutes: 30, realChampionId: "" };
 let selectedMatch = null;
+let fixtureMatchView = "pending";
 let realtimeStarted = false;
 let renderTimer = null;
 let matchesSnapshotReady = false;
@@ -230,8 +231,7 @@ function parseGoalValue(value) {
   if (!Number.isInteger(n) || n < 0 || n > 50) return null;
   return n;
 }
-
-const CHAMPION_DEADLINE = new Date("2026-06-11T16:00:00-03:00");
+const CHAMPION_DEADLINE = new Date("2026-06-19T23:59:00-03:00");
 function championDeadlineLabel() {
   return `${CHAMPION_DEADLINE.toLocaleDateString("es-UY", {
     day: "2-digit",
@@ -461,6 +461,7 @@ function renderAll() {
   renderRanking();
   renderRules();
   renderProfile();
+  renderProjectInfo();
   renderRightPanel();
   if (isAdmin()) {
     renderAdmin();
@@ -783,15 +784,41 @@ function renderShell() {
       <button onclick="showSection('ranking', this)">🏆 Ranking</button>
       <button onclick="showSection('reglas', this)">📘 Reglas</button>
       <button onclick="showSection('perfil', this)">👤 Perfil</button>
+      <button onclick="showSection('informacion', this)">ℹ️ Información</button>
       ${isAdmin() ? `<button onclick="showSection('admin', this)">Admin resultados</button><button onclick="showSection('usuarios', this)">Gestión usuarios</button>` : ""}
     </nav>
     <div class="credits">Desarrollado por Ezequiel Costa y Thiago Sosa<br>3.º año de Profesorado de Informática<br>Ingeniería de Software</div>
   </aside>
   <main class="main">
-    <section id="fixture" class="section active"></section><section id="ranking" class="section"></section><section id="reglas" class="section"></section><section id="perfil" class="section"></section>${isAdmin() ? `<section id="admin" class="section"></section><section id="usuarios" class="section"></section>` : ""}
+    <section id="fixture" class="section active"></section><section id="ranking" class="section"></section><section id="reglas" class="section"></section><section id="perfil" class="section"></section><section id="informacion" class="section"></section>${isAdmin() ? `<section id="admin" class="section"></section><section id="usuarios" class="section"></section>` : ""}
   </main>
   <aside class="right-panel" id="rightPanel"></aside>
   <div id="predictionModal" class="modal"></div>`;
+}
+
+function fixtureViewLabel() {
+  return fixtureMatchView === "played"
+    ? "partidos ya jugados"
+    : "partidos pendientes";
+}
+
+function fixtureMatchesByView(phaseId) {
+  return matches.filter((match) => {
+    const samePhase = match.phase === phaseId;
+    const isPlayed = match.status === "played";
+
+    return samePhase && (fixtureMatchView === "played" ? isPlayed : !isPlayed);
+  });
+}
+
+function showFixtureMatchView(view) {
+  if (view === "toggle") {
+    fixtureMatchView = fixtureMatchView === "played" ? "pending" : "played";
+  } else {
+    fixtureMatchView = view === "played" ? "played" : "pending";
+  }
+
+  renderFixture();
 }
 
 function renderChampionPromptCard() {
@@ -821,21 +848,41 @@ function renderChampionPromptCard() {
 }
 
 function renderFixture() {
-  const html = `<h1>Fixture</h1><div class="underline"></div><p class="subtitle">Los pronósticos permanecen abiertos y cierran 30 minutos antes del inicio. </p>
+  const showingPlayed = fixtureMatchView === "played";
+  const toggleLabel = showingPlayed ? "Ver pendientes" : "Ver ya jugados";
+  const toggleIcon = showingPlayed ? "⏳" : "✓";
+
+  const html = `<div class="fixture-header-row">
+    <div>
+      <h1>Fixture</h1>
+      <div class="underline"></div>
+    </div>
+    <button class="fixture-toggle-btn ${showingPlayed ? "played" : "pending"}" onclick="showFixtureMatchView('toggle')" type="button">
+      <span class="fixture-toggle-icon">${toggleIcon}</span>
+      <span>${toggleLabel}</span>
+    </button>
+  </div>
+  <p class="subtitle">Los pronósticos permanecen abiertos y cierran ${settings.predictionsCloseMinutes || 30} minutos antes del inicio. </p>
   ${renderChampionPromptCard()}
   <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
-    .map(
-      (f, i) =>
-        `<div id="fase-${f.id}" class="fixture-phase ${i === 0 ? "active" : ""}"><div class="fixture-list">${matches
-          .filter((m) => m.phase === f.id)
-          .map(renderMatchCard)
-          .join("")}</div></div>`,
-    )
+    .map((f, i) => {
+      const phaseMatches = fixtureMatchesByView(f.id);
+      return `<div id="fase-${f.id}" class="fixture-phase ${i === 0 ? "active" : ""}">
+        <div class="fixture-list">
+          ${
+            phaseMatches.length
+              ? phaseMatches.map(renderMatchCard).join("")
+              : `<div class="empty-fixture-view">No hay ${fixtureViewLabel()} en esta fase.</div>`
+          }
+        </div>
+      </div>`;
+    })
     .join("")}`;
   $("fixture").innerHTML = html;
   $("fixtureChampionForm")?.addEventListener("submit", saveChampionFromFixture);
 }
+
 function renderMatchCard(m) {
   const [label, klass] = statusFor(m);
   const pr = userPrediction(m.id);
@@ -1358,6 +1405,40 @@ function detailPills(r) {
 function renderRules() {
   $("reglas").innerHTML =
     `<h1>Reglas</h1><div class="underline"></div><div class="rules-grid"><div class="rule-card"><div class="rule-points">+3</div><h3>Resultado exacto</h3><p>Pronóstico: Uruguay 2 - 1 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+2</div><h3>Ganador acertado</h3><p>Pronóstico: Uruguay 1 - 0 España<br>Resultado: Uruguay 2 - 1 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Empate acertado</h3><p>Pronóstico: Uruguay 1 - 1 España<br>Resultado: Uruguay 2 - 2 España</p></div><div class="rule-card"><div class="rule-points">+1</div><h3>Bonus penales</h3><p>En eliminatorias, si pronosticás empate y acertás el ganador por penales.</p></div><div class="rule-card"><div class="rule-points">0</div><h3>Incorrecto</h3><p>Pronóstico: Uruguay 2 - 0 España<br>Resultado: Uruguay 0 - 1 España</p></div><div class="rule-card"><div class="rule-points">+10</div><h3>Campeón</h3><p>Si tu campeón elegido gana el torneo.</p></div></div>`;
+}
+
+function renderProjectInfo() {
+  $("informacion").innerHTML = `
+    <h1>Información del proyecto</h1>
+    <div class="underline"></div>
+
+    <div class="project-info-grid">
+      <article class="project-info-card project-info-main">
+        <h3 style="color: #facc15;">Proyecto de Ingeniería de Software</h3>
+        <p>
+          Esta aplicación fue realizada en el marco de la materia <strong>Ingeniería de Software</strong>,
+          como una propuesta de entretenimiento, práctica y aplicación de conceptos trabajados en clase.
+        </p>
+        <p>
+          El proyecto busca favorecer el aprendizaje mediante el diseño, desarrollo y prueba de una
+          aplicación web con autenticación, base de datos, reglas de acceso, ranking, administración de
+          resultados y actualización de información.
+        </p>
+      </article>
+
+      <article class="project-info-card">
+        <h3 style="color: #facc15;">Uso recreativo y educativo</h3>
+        <p>
+          La aplicación <strong>no constituye un juego de azar</strong>, no involucra apuestas con dinero real
+          y no ofrece premios económicos asociados a la participación.
+        </p>
+        <p>
+          La participación es <strong>gratuita</strong> y no se requiere ningún pago para registrarse,
+          acceder o utilizar las funcionalidades disponibles.
+        </p>
+      </article>
+    </div>
+  `;
 }
 
 function renderProfile() {
@@ -2172,3 +2253,5 @@ function forceDarkTheme() {
   document.body.classList.remove("light-mode");
   localStorage.setItem("theme", "dark");
 }
+
+window.showFixtureMatchView = showFixtureMatchView;
