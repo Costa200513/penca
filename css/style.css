@@ -3492,3 +3492,16 @@ button.is-loading {
     width: 100%;
   }
 }
+
+.match-result-side.user-played-prediction {
+  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.match-result-side.user-played-prediction strong {
+  color: #60a5fa;
+}
+
+.match-result-side.user-played-prediction span {
+  color: #bfdbfe;
+}
