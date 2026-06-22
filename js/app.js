@@ -1779,7 +1779,7 @@ function renderAdminMatch(m) {
         <label>Equipo B<select name="teamBId">${teamOptions(m.teamBId)}</select></label>
         <button class="cancel-btn">Actualizar equipos</button>
       </form>
-      <form class="admin-schedule-form admin-manual-form" data-match="${m.id}">
+      <form class="admin-schedule-form" data-match="${m.id}">
         <label>Día del partido<input name="matchDate" type="date" value="${parseDateOnlyFromMatch(m)}"></label>
         <label>Hora del partido (Uruguay)<input name="matchTime" type="time" value="${m.dateTime ? m.dateTime.substring(11, 16) : ""}"></label>
         <small class="input-help">Podés guardar solo la hora usando el día ya cargado, o corregir el día y la hora sin cargar resultado.</small>
@@ -1938,17 +1938,28 @@ async function saveSchedule(e) {
 
 async function saveTeams(e) {
   e.preventDefault();
-  if (!confirm("¿Seguro que querés actualizar los equipos?")) return;
   const id = e.target.dataset.match;
   const fd = new FormData(e.target);
+  const nextTeamAId = fd.get("teamAId");
+  const nextTeamBId = fd.get("teamBId");
+
+  if (!nextTeamAId || !nextTeamBId) {
+    console.warn(
+      "Actualización de equipos ignorada: el formulario no contiene Equipo A y Equipo B.",
+    );
+    return;
+  }
+
+  if (!confirm("¿Seguro que querés actualizar los equipos?")) return;
+
   const scrollSnapshot = saveEditScrollSnapshot(`admin-match-${id}`);
   setPendingEditScrollSnapshot(scrollSnapshot);
 
   const oldMatch = matches.find((match) => match.id === id);
   const newMatch = {
     ...oldMatch,
-    teamAId: fd.get("teamAId"),
-    teamBId: fd.get("teamBId"),
+    teamAId: nextTeamAId,
+    teamBId: nextTeamBId,
   };
 
   await updateDoc(doc(db, "matches", id), {
