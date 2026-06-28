@@ -851,6 +851,9 @@ function renderFixture() {
   const showingPlayed = fixtureMatchView === "played";
   const toggleLabel = showingPlayed ? "Ver pendientes" : "Ver ya jugados";
   const toggleIcon = showingPlayed ? "⏳" : "✓";
+  const defaultPhaseId = phases.some((f) => f.id === "round32")
+    ? "round32"
+    : phases[0]?.id;
 
   const html = `<div class="fixture-header-row">
     <div>
@@ -864,11 +867,11 @@ function renderFixture() {
   </div>
   <p class="subtitle">Los pronósticos permanecen abiertos y cierran ${settings.predictionsCloseMinutes || 30} minutos antes del inicio. </p>
   ${renderChampionPromptCard()}
-  <div class="phase-tabs">${phases.map((f, i) => `<button class="phase-btn ${i === 0 ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
+  <div class="phase-tabs">${phases.map((f) => `<button class="phase-btn ${f.id === defaultPhaseId ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
-    .map((f, i) => {
+    .map((f) => {
       const phaseMatches = fixtureMatchesByView(f.id);
-      return `<div id="fase-${f.id}" class="fixture-phase ${i === 0 ? "active" : ""}">
+      return `<div id="fase-${f.id}" class="fixture-phase ${f.id === defaultPhaseId ? "active" : ""}">
         <div class="fixture-list">
           ${
             phaseMatches.length
