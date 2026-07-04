@@ -851,8 +851,8 @@ function renderFixture() {
   const showingPlayed = fixtureMatchView === "played";
   const toggleLabel = showingPlayed ? "Ver pendientes" : "Ver ya jugados";
   const toggleIcon = showingPlayed ? "⏳" : "✓";
-  const defaultPhaseId = phases.some((f) => f.id === "round32")
-    ? "round32"
+  const defaultPhaseId = phases.some((f) => f.id === "round16")
+    ? "round16"
     : phases[0]?.id;
 
   const html = `<div class="fixture-header-row">
