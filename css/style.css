@@ -3505,3 +3505,131 @@ button.is-loading {
 .match-result-side.user-played-prediction span {
   color: #bfdbfe;
 }
+
+body.prize-message-open {
+  overflow: hidden;
+}
+
+.prize-message-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(250, 204, 21, 0.18),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(22, 199, 132, 0.2),
+      transparent 34%
+    ),
+    rgba(2, 6, 23, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.prize-message-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  border-radius: 28px;
+  padding: clamp(24px, 5vw, 46px);
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.96)),
+    #111827;
+  color: #e5e7eb;
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.prize-message-card h2 {
+  margin: 0 0 16px;
+  color: #f8fafc;
+  font-size: clamp(30px, 5vw, 54px);
+  line-height: 1;
+}
+
+.prize-message-card p {
+  margin: 0 auto 22px;
+  max-width: 640px;
+  color: #cbd5e1;
+  line-height: 1.65;
+  font-size: clamp(15px, 2vw, 18px);
+}
+
+.prize-message-prizes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 28px 0;
+}
+
+.prize-message-prize {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.72);
+  text-align: left;
+}
+
+.prize-message-prize span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 18px;
+  background: rgba(59, 130, 246, 0.15);
+  font-size: 28px;
+}
+
+.prize-message-prize strong {
+  display: block;
+  color: #facc15;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.prize-message-prize small {
+  color: #e5e7eb;
+  font-size: 15px;
+}
+
+.prize-message-note {
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+}
+
+.prize-message-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #16c784, #22d3ee);
+  color: #02111d;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(34, 211, 238, 0.22);
+}
+
+.prize-message-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+@media (max-width: 640px) {
+  .prize-message-prizes {
+    grid-template-columns: 1fr;
+  }
+
+  .prize-message-card {
+    border-radius: 22px;
+  }
+}

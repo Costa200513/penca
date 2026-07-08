@@ -314,6 +314,94 @@ function hasTrustedVerifiedIdentity(user) {
   return !!user?.emailVerified || userSignedInWithGoogle(user);
 }
 
+function shouldShowQuarterMessage() {
+  if (isAdmin() || !userData || userData.quarterMessageSeen === true)
+    return false;
+  return (
+    localStorage.getItem(`pencaQuarterMessageSeen_${currentUser.uid}`) !==
+    "true"
+  );
+}
+
+function showQuarterMessageOnce() {
+  if (!shouldShowQuarterMessage()) return;
+  if (document.querySelector(".prize-message-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "prize-message-overlay";
+  overlay.innerHTML = `
+        <div class="prize-message-card" role="dialog" aria-modal="true" aria-labelledby="prizeMessageTitle">
+      <h2 id="prizeMessageTitle">¡La penca está siendo un éxito!</h2>
+      <p>
+        Gracias a cada estudiante y docente que se sumó, pronosticó y acompañó los partidos.
+        La participación superó las expectativas y convirtió este proyecto en una
+        experiencia realmente intersante.<br> 
+        Por lo mismo hemos decidido dar premios de reconocimiento a los dos mejores participantes.
+      </p>
+
+      <div class="prize-message-prizes" aria-label="Premios de la penca">
+        <div class="prize-message-prize">
+          <span>🏆</span>
+          <div>
+            <strong>1.er premio</strong>
+            <small>Matera de madera</small>
+          </div>
+        </div>
+        <div class="prize-message-prize">
+          <span>🎁</span>
+          <div>
+            <strong>2.º premio</strong>
+            <small>Matera de tela</small>
+          </div>
+        </div>
+      </div>
+
+      <p class="prize-message-note">
+        Esta actividad no constituye un juego de azar
+        ni involucra apuestas con dinero real.
+      </p>
+
+      <button class="prize-message-button" type="button">Entendido</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("prize-message-open");
+
+  const button = overlay.querySelector(".prize-message-button");
+  button?.focus();
+
+  button?.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "Guardando...";
+
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        quarterMessageSeen: true,
+        quarterMessageSeenAt: serverTimestamp(),
+      });
+
+      userData = {
+        ...userData,
+        quarterMessageSeen: true,
+      };
+    } catch (error) {
+      console.error("No se pudo guardar el aviso de cuartos:", error);
+      localStorage.setItem(
+        `pencaQuarterMessageSeen_${currentUser.uid}`,
+        "true",
+      );
+      userData = {
+        ...userData,
+        quarterMessageSeen: true,
+      };
+    } finally {
+      overlay.remove();
+      document.body.classList.remove("prize-message-open");
+    }
+  });
+}
+
 onAuthStateChanged(auth, async (user) => {
   try {
     if (!user) {
@@ -356,6 +444,7 @@ onAuthStateChanged(auth, async (user) => {
     renderAll();
     startRealtimeListeners();
     hidePageLoader();
+    showQuarterMessageOnce();
   } catch (error) {
     console.error("Error al cargar la aplicación:", error);
     hidePageLoader();
@@ -851,8 +940,8 @@ function renderFixture() {
   const showingPlayed = fixtureMatchView === "played";
   const toggleLabel = showingPlayed ? "Ver pendientes" : "Ver ya jugados";
   const toggleIcon = showingPlayed ? "⏳" : "✓";
-  const defaultPhaseId = phases.some((f) => f.id === "round16")
-    ? "round16"
+  const defaultPhaseId = phases.some((f) => f.id === "quarter")
+    ? "quarter"
     : phases[0]?.id;
 
   const html = `<div class="fixture-header-row">
