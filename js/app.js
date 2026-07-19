@@ -1043,6 +1043,29 @@ function renderChampionPromptCard() {
   </div>`;
 }
 
+function worldChampionTeamId() {
+  if (settings.realChampionId) return settings.realChampionId;
+
+  const finalMatch = matches.find(
+    (match) => match.phase === "final" && match.status === "played",
+  );
+
+  return finalMatch?.winnerId || "";
+}
+
+function renderWorldChampionBanner() {
+  const championId = worldChampionTeamId();
+  if (!championId) return "";
+
+  return `<div class="world-champion-banner">
+    <span class="world-champion-icon">🏆</span>
+    <div>
+      <span class="world-champion-label">Campeón del Mundial 2026</span>
+      <strong>${esc(teamName(championId))}</strong>
+    </div>
+  </div>`;
+}
+
 function renderFixture() {
   const showingPlayed = fixtureMatchView === "played";
   const toggleLabel = showingPlayed ? "Ver pendientes" : "Ver ya jugados";
@@ -1062,6 +1085,7 @@ function renderFixture() {
     </button>
   </div>
   <p class="subtitle">Los pronósticos permanecen abiertos y cierran ${settings.predictionsCloseMinutes || 30} minutos antes del inicio. </p>
+  ${renderWorldChampionBanner()}
   ${renderChampionPromptCard()}
   <div class="phase-tabs">${phases.map((f) => `<button class="phase-btn ${f.id === defaultPhaseId ? "active" : ""}" onclick="showFixturePhase('fase-${f.id}', this)">${esc(f.name)}</button>`).join("")}</div>
   ${phases
