@@ -402,6 +402,112 @@ function showQuarterMessageOnce() {
   });
 }
 
+function shouldShowFinalMessage() {
+  if (isAdmin() || !userData || userData.finalMessageSeen === true)
+    return false;
+  return (
+    localStorage.getItem(`pencaFinalMessageSeen_${currentUser.uid}`) !== "true"
+  );
+}
+
+function finalWinnersFromLeaderboard() {
+  const rows = Array.isArray(leaderboard.individual)
+    ? leaderboard.individual
+    : [];
+
+  const first = rows[0];
+  const second = rows[1];
+
+  return {
+    first: first?.fullName || first?.username || "",
+    second: second?.fullName || second?.username || "",
+  };
+}
+
+function showFinalMessageOnce() {
+  if (!shouldShowFinalMessage()) return;
+  if (document.querySelector(".prize-message-overlay")) return;
+
+  const finalWinners = finalWinnersFromLeaderboard();
+
+  const overlay = document.createElement("div");
+  overlay.className = "prize-message-overlay";
+  overlay.innerHTML = `
+    <div class="prize-message-card" role="dialog" aria-modal="true" aria-labelledby="finalMessageTitle">
+
+      <h2 id="finalMessageTitle">¡Terminó el Mundial!</h2>
+
+      <p>
+        Después de muchas fechas, pronósticos, cambios en el ranking y partidos compartidos,
+        llegó el final de la penca.
+      </p>
+
+      <p>
+        Queremos agradecer a todos los estudiantes y docentes que participaron.
+      </p>
+
+      <div class="prize-message-prizes" aria-label="Ganadores de la penca">
+        <div class="prize-message-prize">
+          <span>🏆</span>
+          <div>
+            <strong>1.er puesto · Matera de madera</strong>
+            <small>${esc(finalWinners.first || "Se anunciará a la brevedad")}</small>
+          </div>
+        </div>
+
+        <div class="prize-message-prize">
+          <span>🎁</span>
+          <div>
+            <strong>2.º puesto · Matera de tela</strong>
+            <small>${esc(finalWinners.second || "Se anunciará a la brevedad")}</small>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        Nos comunicaremos con los ganadores a la brevedad via Gmail para
+        coordinar la entrega de cada premio.<br>
+        ¡Muchas gracias a todos!
+      </p>
+
+      <button class="prize-message-button" type="button">Entendido</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("prize-message-open");
+
+  const button = overlay.querySelector(".prize-message-button");
+  button?.focus();
+
+  button?.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "Guardando...";
+
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        finalMessageSeen: true,
+        finalMessageSeenAt: serverTimestamp(),
+      });
+
+      userData = {
+        ...userData,
+        finalMessageSeen: true,
+      };
+    } catch (error) {
+      console.error("No se pudo guardar el aviso final:", error);
+      localStorage.setItem(`pencaFinalMessageSeen_${currentUser.uid}`, "true");
+      userData = {
+        ...userData,
+        finalMessageSeen: true,
+      };
+    } finally {
+      overlay.remove();
+      document.body.classList.remove("prize-message-open");
+    }
+  });
+}
+
 onAuthStateChanged(auth, async (user) => {
   try {
     if (!user) {
@@ -444,6 +550,7 @@ onAuthStateChanged(auth, async (user) => {
     renderAll();
     startRealtimeListeners();
     hidePageLoader();
+    showFinalMessageOnce();
     showQuarterMessageOnce();
   } catch (error) {
     console.error("Error al cargar la aplicación:", error);
